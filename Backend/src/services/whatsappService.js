@@ -105,9 +105,41 @@ const sendReaction = async (phone, messageId, emoji) => {
   }
 };
 
+/**
+ * Send an interactive button message (max 3 buttons)
+ */
+const sendButtonMessage = async (phone, bodyText, buttons) => {
+  try {
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phone,
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        body: { text: bodyText },
+        action: {
+          buttons: buttons.map((btn, i) => ({
+            type: 'reply',
+            reply: { id: btn.id || `btn_${i}`, title: btn.title }
+          }))
+        }
+      }
+    };
+    const response = await axios.post(WA_API_URL, payload, { headers: getHeaders() });
+    logger.msgSuccess(`WhatsApp interactive buttons sent to ${phone}`);
+    return response.data;
+  } catch (error) {
+    const errMsg = error.response?.data?.error?.message || error.message;
+    logger.msgFail(`Failed to send buttons to ${phone}`, errMsg);
+    throw new Error(`WhatsApp API error: ${errMsg}`);
+  }
+};
+
 module.exports = {
   sendTextMessage,
   sendTemplateMessage,
+  sendButtonMessage,
   markMessageAsRead,
   sendReaction,
 };

@@ -16,5 +16,9 @@ export const conversationService = {
   takeOver: async (conversationId: string) => {
     const res = await api.patch(`/conversations/${conversationId}/takeover`);
     return res.data;
+  },
+  resumeBot: async (conversationId: string) => {
+    const res = await api.patch(`/conversations/${conversationId}/resume-bot`);
+    return res.data;
   }
 };

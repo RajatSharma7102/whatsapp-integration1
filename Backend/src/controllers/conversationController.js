@@ -1,6 +1,8 @@
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const { sendSuccess, sendError, sendPaginated } = require('../utils/responseHelper');
+const { getIO } = require('../sockets/socketManager');
+const { SOCKET_EVENTS } = require('../constants');
 
 const getConversations = async (req, res, next) => {
   try {
@@ -78,12 +80,48 @@ const takeOverConversation = async (req, res, next) => {
     if (!conversation) return sendError(res, 'Conversation not found.', 404);
 
     conversation.botStatus = 'HUMAN_ASSIGNED';
+    if (req.user) conversation.assignedTo = req.user._id;
     await conversation.save();
 
-    return sendSuccess(res, conversation, 'Conversation taken over by human.');
+    // Emit socket so frontend updates instantly
+    const io = getIO();
+    if (io) {
+      io.emit('conversation_takeover', {
+        conversationId: id,
+        botStatus: 'HUMAN_ASSIGNED',
+        assignedTo: req.user || null,
+      });
+    }
+
+    return sendSuccess(res, { success: true, status: 'HUMAN_ASSIGNED', conversation }, 'Conversation taken over by human.');
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { getConversations, getMessages, takeOverConversation, getConversationByLead };
+const resumeBot = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id);
+    if (!conversation) return sendError(res, 'Conversation not found.', 404);
+
+    conversation.botStatus = 'BOT_ACTIVE';
+    conversation.assignedTo = null;
+    await conversation.save();
+
+    const io = getIO();
+    if (io) {
+      io.emit('conversation_takeover', {
+        conversationId: id,
+        botStatus: 'BOT_ACTIVE',
+        assignedTo: null,
+      });
+    }
+
+    return sendSuccess(res, { success: true, status: 'BOT_ACTIVE', conversation }, 'Bot resumed.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getConversations, getMessages, takeOverConversation, getConversationByLead, resumeBot };

@@ -23,9 +23,10 @@ const conversationSchema = new mongoose.Schema({
   },
   botState: {
     type: String,
-    enum: ['ASK_NAME', 'ASK_PHONE', 'ASK_SERVICE', 'ASK_REQUIREMENT', 'FINALIZE', 'COMPLETED'],
+    enum: ['ASK_NAME', 'CONFIRM_NUMBER', 'ASK_PHONE', 'ASK_SERVICES', 'ASK_REQUIREMENT', 'COMPLETED'],
     default: 'ASK_NAME'
-  }
+  },
+  botMeta: { type: String, default: '' }
 }, { timestamps: true });
 
 conversationSchema.index({ lastMessageAt: -1 });

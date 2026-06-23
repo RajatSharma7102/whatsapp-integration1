@@ -33,10 +33,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     });
 
     socket.on('new_message', (payload: { conversationId: string, leadId: string, lead: Lead, message: Message, isNewLead?: boolean }) => {
-      const { activeConversationId, addMessage } = useConversationStore.getState();
+      const { activeConversation, addMessage } = useConversationStore.getState();
       
       // If it's for the currently open chat, append it
-      if (activeConversationId === payload.conversationId) {
+      if (activeConversation?._id === payload.conversationId) {
         addMessage(payload.message);
       }
       
@@ -47,8 +47,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     });
 
     socket.on('message_status_update', (payload: { messageId: string, status: any, conversationId: string }) => {
-      const { activeConversationId, updateMessageStatus } = useConversationStore.getState();
-      if (activeConversationId === payload.conversationId) {
+      const { activeConversation, updateMessageStatus } = useConversationStore.getState();
+      if (activeConversation?._id === payload.conversationId) {
         updateMessageStatus(payload.messageId, payload.status);
       }
     });
@@ -60,6 +60,14 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     socket.on('conversation_updated', () => {
       // Optionally update conversation list/unread count
       useLeadStore.getState().fetchLeads();
+    });
+
+    socket.on('conversation_takeover', (payload: { conversationId: string, botStatus: string, assignedTo: any }) => {
+      const { activeConversation, setActiveConversation } = useConversationStore.getState();
+      const { activeLead } = useConversationStore.getState();
+      if (activeConversation?._id === payload.conversationId) {
+        setActiveConversation({ ...activeConversation, botStatus: payload.botStatus, assignedTo: payload.assignedTo }, activeLead);
+      }
     });
 
     set({ socket });

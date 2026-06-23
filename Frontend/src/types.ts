@@ -3,10 +3,14 @@ export interface Lead {
   name: string;
   email?: string;
   phone: string;
+  contactNumber?: string;
+  alternatePhone?: string;
   status: string;
   source: string;
   tags: string[];
   notes?: string;
+  selectedServices?: string[];
+  requirement?: string;
   assignedTo?: any;
   isActive: boolean;
   createdAt: string;
@@ -21,6 +25,8 @@ export interface Conversation {
   unreadCount: number;
   isOpen: boolean;
   assignedTo?: any;
+  botStatus: 'BOT_ACTIVE' | 'HUMAN_ASSIGNED';
+  botState: 'ASK_NAME' | 'CONFIRM_NUMBER' | 'ASK_PHONE' | 'ASK_SERVICES' | 'ASK_REQUIREMENT' | 'COMPLETED';
 }
 
 export interface Message {

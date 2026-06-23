@@ -80,9 +80,13 @@ const processIncomingMessage = async (msg, contact) => {
     const messageType = msg.type;
     const messageText =
       msg.text?.body ||
+      msg.interactive?.button_reply?.title ||
       msg.image?.caption ||
       msg.document?.caption ||
       `[${messageType}]`;
+
+    // Extract interactive payload for button replies
+    const interactivePayload = msg.interactive || null;
 
     const contactName = contact?.profile?.name || phone;
 
@@ -137,7 +141,7 @@ const processIncomingMessage = async (msg, contact) => {
     await whatsappService.markMessageAsRead(messageId);
 
     // 7. Process Bot Logic
-    await botService.handleIncoming(conversation, lead, messageText);
+    await botService.handleIncoming(conversation, lead, messageText, messageType, interactivePayload);
 
     // 8. Emit socket events
     const io = getIO();

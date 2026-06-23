@@ -23,7 +23,8 @@ const leadSchema = new mongoose.Schema({
   },
   tags: [{ type: String, trim: true }],
   notes: { type: String, default: '' },
-  selectedService: { type: String, default: '' },
+  contactNumber: { type: String, trim: true, default: '' },
+  selectedServices: [{ type: String }],
   requirement: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });

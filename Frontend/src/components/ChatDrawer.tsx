@@ -30,6 +30,7 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
     setActiveConversation,
     sendMessage,
     takeOverConversation,
+    resumeBot,
     activeConversation
   } = useConversationStore()
 
@@ -78,6 +79,12 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
   const handleTakeOver = () => {
     if (activeConversation) {
       takeOverConversation(activeConversation._id)
+    }
+  }
+
+  const handleResumeBot = () => {
+    if (activeConversation) {
+      resumeBot(activeConversation._id)
     }
   }
 
@@ -145,25 +152,49 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
                 </span>
               </div>
               
-              {/* Bot Info & Take Over */}
-              <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
-                <div className="flex gap-4 text-xs">
-                  <div>
-                    <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-semibold">Service</span>
-                    <span className="text-slate-700 font-medium">{lead.selectedService || '—'}</span>
+              {/* Bot Qualification Info & Take Over */}
+              <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                <div className="grid grid-cols-2 gap-0 divide-x divide-slate-100">
+                  <div className="p-2">
+                    <span className="text-slate-400 block mb-1 text-[10px] uppercase font-semibold tracking-wide">Services</span>
+                    {lead.selectedServices?.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {lead.selectedServices.map((s: string) => (
+                          <Badge key={s} className="text-[9px] h-4 px-1.5 bg-violet-50 text-violet-700 border-violet-200 rounded-full">{s}</Badge>
+                        ))}
+                      </div>
+                    ) : <span className="text-slate-400 text-xs">—</span>}
                   </div>
-                  <div>
-                    <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-semibold">Requirement</span>
-                    <span className="text-slate-700 font-medium line-clamp-1">{lead.requirement || '—'}</span>
+                  <div className="p-2">
+                    <span className="text-slate-400 block mb-1 text-[10px] uppercase font-semibold tracking-wide">Requirement</span>
+                    <span className="text-slate-700 text-xs leading-snug line-clamp-2">{lead.requirement || '—'}</span>
                   </div>
                 </div>
-                {activeConversation?.botStatus === 'BOT_ACTIVE' ? (
-                  <Button onClick={handleTakeOver} size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white shrink-0">
-                    Take Over
-                  </Button>
-                ) : (
-                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 shrink-0">Human Assigned</Badge>
+                {lead.contactNumber && lead.contactNumber !== lead.phone && (
+                  <div className="px-2 py-1.5 border-t border-slate-100 bg-slate-50">
+                    <span className="text-[10px] text-slate-400">Contact: </span>
+                    <span className="text-[10px] font-medium text-slate-600 font-mono">{lead.contactNumber}</span>
+                  </div>
                 )}
+                <div className="px-2 py-1.5 border-t border-slate-100 flex justify-between items-center">
+                  <span className="text-[10px] text-slate-400">
+                    Bot: <span className={`font-semibold ${activeConversation?.botStatus === 'BOT_ACTIVE' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {activeConversation?.botStatus === 'BOT_ACTIVE' ? `Active (${activeConversation?.botState})` : 'Human Assigned'}
+                    </span>
+                  </span>
+                  {activeConversation?.botStatus === 'BOT_ACTIVE' ? (
+                    <Button onClick={handleTakeOver} size="sm" className="h-6 text-[10px] bg-amber-500 hover:bg-amber-600 text-white">
+                      Take Over 🧑‍💼
+                    </Button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Agent Active</Badge>
+                      <Button onClick={handleResumeBot} size="sm" className="h-6 text-[10px] bg-violet-500 hover:bg-violet-600 text-white">
+                        Resume Bot 🤖
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

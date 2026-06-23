@@ -14,6 +14,7 @@ interface ConversationState {
   fetchMessages: (conversationId: string) => Promise<void>;
   sendMessage: (leadId: string, message: string) => Promise<void>;
   takeOverConversation: (conversationId: string) => Promise<void>;
+  resumeBot: (conversationId: string) => Promise<void>;
   
   // Real-time mutations
   addMessage: (message: Message) => void;
@@ -61,10 +62,21 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   takeOverConversation: async (conversationId) => {
     try {
-      const updatedConv = await conversationService.takeOver(conversationId);
-      set({ activeConversation: updatedConv.data || updatedConv });
+      const res = await conversationService.takeOver(conversationId);
+      const updated = res.data?.conversation || res.data || res;
+      set({ activeConversation: updated });
     } catch (error) {
       console.error('Failed to take over conversation:', error);
+    }
+  },
+
+  resumeBot: async (conversationId) => {
+    try {
+      const res = await conversationService.resumeBot(conversationId);
+      const updated = res.data?.conversation || res.data || res;
+      set({ activeConversation: updated });
+    } catch (error) {
+      console.error('Failed to resume bot:', error);
     }
   },
 
