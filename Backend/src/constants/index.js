@@ -1,0 +1,47 @@
+module.exports = {
+  LEAD_STATUS: {
+    NEW: 'New',
+    INTERESTED: 'Interested',
+    FOLLOW_UP: 'Follow Up',
+    QUALIFIED: 'Qualified',
+    CLOSED_WON: 'Closed Won',
+    CLOSED_LOST: 'Closed Lost',
+  },
+  LEAD_SOURCE: {
+    WEBSITE: 'Website',
+    WHATSAPP: 'WhatsApp',
+    FACEBOOK: 'Facebook',
+    INSTAGRAM: 'Instagram',
+    GOOGLE: 'Google',
+    REFERRAL: 'Referral',
+    MANUAL: 'Manual',
+  },
+  MESSAGE_DIRECTION: {
+    INCOMING: 'incoming',
+    OUTGOING: 'outgoing',
+  },
+  MESSAGE_STATUS: {
+    ACCEPTED: 'accepted',
+    SENT: 'sent',
+    DELIVERED: 'delivered',
+    READ: 'read',
+    FAILED: 'failed',
+  },
+  MESSAGE_TYPE: {
+    TEXT: 'text',
+    IMAGE: 'image',
+    AUDIO: 'audio',
+    VIDEO: 'video',
+    DOCUMENT: 'document',
+    TEMPLATE: 'template',
+    INTERACTIVE: 'interactive',
+  },
+  SOCKET_EVENTS: {
+    NEW_MESSAGE: 'new_message',
+    MESSAGE_STATUS_UPDATE: 'message_status_update',
+    CONVERSATION_UPDATED: 'conversation_updated',
+    TYPING: 'typing',
+    LEAD_CREATED: 'lead_created',
+  },
+  WHATSAPP_API_URL: `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION || 'v25.0'}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+};
