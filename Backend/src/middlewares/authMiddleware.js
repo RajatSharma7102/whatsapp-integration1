@@ -22,6 +22,7 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
+    req.companyId = user.companyId; // Ensure tenant isolation is globally available
     next();
   } catch (error) {
     next(error);

@@ -9,7 +9,7 @@ const getConversations = async (req, res, next) => {
     const { page = 1, limit = 20, search } = req.query;
     const skip = (page - 1) * limit;
 
-    let matchStage = { isOpen: true };
+    let matchStage = { isOpen: true, companyId: req.companyId };
 
     const [conversations, total] = await Promise.all([
       Conversation.find(matchStage)
@@ -40,7 +40,7 @@ const getMessages = async (req, res, next) => {
     const { page = 1, limit = 50 } = req.query;
     const skip = (page - 1) * limit;
 
-    const conversation = await Conversation.findById(conversationId);
+    const conversation = await Conversation.findOne({ _id: conversationId, companyId: req.companyId });
     if (!conversation) return sendError(res, 'Conversation not found.', 404);
 
     // Reset unread count
@@ -64,7 +64,7 @@ const getMessages = async (req, res, next) => {
 const getConversationByLead = async (req, res, next) => {
   try {
     const { leadId } = req.params;
-    const conversation = await Conversation.findOne({ leadId }).populate('leadId');
+    const conversation = await Conversation.findOne({ leadId, companyId: req.companyId }).populate('leadId');
     if (!conversation) return sendError(res, 'Conversation not found for this lead.', 404);
     
     return sendSuccess(res, conversation, 'Conversation retrieved.');
@@ -76,7 +76,7 @@ const getConversationByLead = async (req, res, next) => {
 const takeOverConversation = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const conversation = await Conversation.findById(id);
+    const conversation = await Conversation.findOne({ _id: id, companyId: req.companyId });
     if (!conversation) return sendError(res, 'Conversation not found.', 404);
 
     conversation.botStatus = 'HUMAN_ASSIGNED';
@@ -102,7 +102,7 @@ const takeOverConversation = async (req, res, next) => {
 const resumeBot = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const conversation = await Conversation.findById(id);
+    const conversation = await Conversation.findOne({ _id: id, companyId: req.companyId });
     if (!conversation) return sendError(res, 'Conversation not found.', 404);
 
     conversation.botStatus = 'BOT_ACTIVE';

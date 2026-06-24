@@ -1,4 +1,4 @@
-const whatsappService = require('./whatsappService');
+const whatsappMessageService = require('./whatsapp/whatsappMessage.service');
 const Lead = require('../models/Lead');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
@@ -45,10 +45,12 @@ const parseServices = (text) => {
 };
 
 // ─── Save bot reply to DB + emit socket ──────────────────────────────────────
-const saveBotReply = async (conversation, lead, replyText, waResponse) => {
+const saveBotReply = async (whatsappAccount, conversation, lead, replyText, waResponse) => {
   const waMessageId = waResponse?.messages?.[0]?.id;
 
   const savedMessage = await Message.create({
+    companyId: whatsappAccount.companyId,
+    whatsappAccountId: whatsappAccount._id,
     conversationId: conversation._id,
     leadId: lead._id,
     direction: MESSAGE_DIRECTION.OUTGOING,
@@ -85,7 +87,7 @@ const saveBotReply = async (conversation, lead, replyText, waResponse) => {
 
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 class BotService {
-  async handleIncoming(conversation, lead, incomingText, msgType, interactivePayload) {
+  async handleIncoming(whatsappAccount, conversation, lead, incomingText, msgType, interactivePayload) {
     // ── GATE: Only stop for HUMAN_ASSIGNED ──────────────────────────────────
     // Bot is active for all states including COMPLETED (keeps listening)
     if (conversation.botStatus === 'HUMAN_ASSIGNED') {
@@ -111,10 +113,10 @@ class BotService {
         // ── STEP 1: ANY first message → greet + ask name ──────────────────
         case 'ASK_NAME': {
           const replyText = `👋 Thank you for contacting us.\n\nTo help us assist you better, please provide your full name.`;
-          waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
+          waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
           freshConv.botState = 'CONFIRM_NUMBER';
           await freshConv.save();
-          await saveBotReply(freshConv, freshLead, replyText, waResponse);
+          await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
           break;
         }
 
@@ -122,8 +124,8 @@ class BotService {
         case 'CONFIRM_NUMBER': {
           const trimmedName = incomingText.trim();
           if (!trimmedName || trimmedName.length < 2) {
-            waResponse = await whatsappService.sendTextMessage(freshLead.phone, `Please enter your full name.`);
-            await saveBotReply(freshConv, freshLead, `Please enter your full name.`, waResponse);
+            waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, `Please enter your full name.`);
+            await saveBotReply(whatsappAccount, freshConv, freshLead, `Please enter your full name.`, waResponse);
             break;
           }
 
@@ -135,19 +137,19 @@ class BotService {
 
           // Try interactive buttons first, fall back to text
           try {
-            waResponse = await whatsappService.sendButtonMessage(freshLead.phone, bodyText, [
+            waResponse = await whatsappMessageService.sendButtonMessage(whatsappAccount, freshLead.phone, bodyText, [
               { id: 'confirm_yes', title: 'Yes ✅' },
               { id: 'confirm_no', title: 'No ❌' },
             ]);
           } catch (e) {
             // Buttons may fail in sandbox — fall back to text
             logger.warn(`Interactive buttons failed, falling back to text: ${e.message}`);
-            waResponse = await whatsappService.sendTextMessage(freshLead.phone, bodyText);
+            waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, bodyText);
           }
 
           freshConv.botState = 'ASK_PHONE';
           await freshConv.save();
-          await saveBotReply(freshConv, freshLead, bodyText, waResponse);
+          await saveBotReply(whatsappAccount, freshConv, freshLead, bodyText, waResponse);
           break;
         }
 
@@ -163,41 +165,41 @@ class BotService {
             freshLead.contactNumber = freshLead.phone;
             await freshLead.save();
 
-            waResponse = await whatsappService.sendTextMessage(freshLead.phone, SERVICES_MENU);
+            waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, SERVICES_MENU);
             freshConv.botState = 'ASK_SERVICES';
             freshConv.botMeta = '';
             await freshConv.save();
-            await saveBotReply(freshConv, freshLead, SERVICES_MENU, waResponse);
+            await saveBotReply(whatsappAccount, freshConv, freshLead, SERVICES_MENU, waResponse);
 
           } else if (isNo) {
             const replyText = `Please enter your contact number:\n\nExample: +91 9876543210`;
-            waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
+            waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
             freshConv.botMeta = 'WAITING_PHONE_INPUT';
             await freshConv.save();
-            await saveBotReply(freshConv, freshLead, replyText, waResponse);
+            await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
 
           } else if (freshConv.botMeta === 'WAITING_PHONE_INPUT') {
             // User is entering their alternate phone number
             if (!isValidPhone(incomingText)) {
               const replyText = `⚠️ Invalid number format. Please enter a valid phone number.\n\nExample: +91 9876543210`;
-              waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
-              await saveBotReply(freshConv, freshLead, replyText, waResponse);
+              waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
+              await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
             } else {
               freshLead.contactNumber = incomingText.trim();
               await freshLead.save();
 
-              waResponse = await whatsappService.sendTextMessage(freshLead.phone, SERVICES_MENU);
+              waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, SERVICES_MENU);
               freshConv.botState = 'ASK_SERVICES';
               freshConv.botMeta = '';
               await freshConv.save();
-              await saveBotReply(freshConv, freshLead, SERVICES_MENU, waResponse);
+              await saveBotReply(whatsappAccount, freshConv, freshLead, SERVICES_MENU, waResponse);
             }
           } else {
             // No matching response — re-prompt
             const displayPhone = formatPhoneDisplay(freshLead.phone);
             const replyText = `Please reply *Yes* to confirm ${displayPhone} or *No* to enter a different number.`;
-            waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
-            await saveBotReply(freshConv, freshLead, replyText, waResponse);
+            waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
+            await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
           }
           break;
         }
@@ -208,18 +210,18 @@ class BotService {
 
           if (selected.length === 0) {
             const replyText = `⚠️ Please select at least one option by replying with numbers.\n\nExample: *1,3,4*\n\n${SERVICES_MENU}`;
-            waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
-            await saveBotReply(freshConv, freshLead, replyText, waResponse);
+            waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
+            await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
           } else {
             freshLead.selectedServices = selected;
             await freshLead.save();
 
             const serviceList = selected.map(s => `• ${s}`).join('\n');
             const replyText = `✅ Got it! You selected:\n${serviceList}\n\nPlease briefly describe your requirement.`;
-            waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
+            waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
             freshConv.botState = 'ASK_REQUIREMENT';
             await freshConv.save();
-            await saveBotReply(freshConv, freshLead, replyText, waResponse);
+            await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
           }
           break;
         }
@@ -228,8 +230,8 @@ class BotService {
         case 'ASK_REQUIREMENT': {
           if (incomingText.trim().length < 5) {
             const replyText = `Please describe your requirement in a few words.`;
-            waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
-            await saveBotReply(freshConv, freshLead, replyText, waResponse);
+            waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
+            await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
             break;
           }
 
@@ -238,11 +240,11 @@ class BotService {
           await freshLead.save();
 
           const replyText = `✅ Thank you for your enquiry.\n\nOur team has received your request and will contact you shortly.\n\nHave a great day! 🙏`;
-          waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
+          waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
 
           freshConv.botState = 'COMPLETED';
           await freshConv.save();
-          await saveBotReply(freshConv, freshLead, replyText, waResponse);
+          await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
 
           // Emit lead qualified event to CRM
           const io = getIO();
@@ -260,13 +262,11 @@ class BotService {
           await freshConv.save();
 
           // Immediately send the greeting
-          const replyText = `👋 Thank you for contacting us again.
-
-To help us assist you better, please provide your full name.`;
-          waResponse = await whatsappService.sendTextMessage(freshLead.phone, replyText);
+          const replyText = `👋 Thank you for contacting us again.\n\nTo help us assist you better, please provide your full name.`;
+          waResponse = await whatsappMessageService.sendTextMessage(whatsappAccount, freshLead.phone, replyText);
           freshConv.botState = 'CONFIRM_NUMBER';
           await freshConv.save();
-          await saveBotReply(freshConv, freshLead, replyText, waResponse);
+          await saveBotReply(whatsappAccount, freshConv, freshLead, replyText, waResponse);
 
           logger.info(`🔄 Bot flow RESTARTED for ${freshLead.phone}`);
           break;

@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const { MESSAGE_DIRECTION, MESSAGE_STATUS, MESSAGE_TYPE } = require('../constants');
 
 const messageSchema = new mongoose.Schema({
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
+  whatsappAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'WhatsAppAccount', required: true, index: true },
   conversationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Conversation',

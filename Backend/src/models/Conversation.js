@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const conversationSchema = new mongoose.Schema({
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
+  whatsappAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'WhatsAppAccount', required: true, index: true },
   leadId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lead',

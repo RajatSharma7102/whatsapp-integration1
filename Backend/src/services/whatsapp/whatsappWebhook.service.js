@@ -1,11 +1,12 @@
-const Lead = require('../models/Lead');
-const Conversation = require('../models/Conversation');
-const Message = require('../models/Message');
-const whatsappService = require('../services/whatsappService');
-const botService = require('../services/botService');
-const { getIO } = require('../sockets/socketManager');
-const { SOCKET_EVENTS, MESSAGE_DIRECTION, MESSAGE_STATUS, LEAD_SOURCE } = require('../constants');
-const logger = require('../config/logger');
+const Lead = require('../../models/Lead');
+const Conversation = require('../../models/Conversation');
+const Message = require('../../models/Message');
+const WhatsAppAccount = require('../../models/WhatsAppAccount');
+const whatsappMessageService = require('./whatsappMessage.service');
+const botService = require('../botService');
+const { getIO } = require('../../sockets/socketManager');
+const { SOCKET_EVENTS, MESSAGE_DIRECTION, MESSAGE_STATUS, LEAD_SOURCE } = require('../../constants');
+const logger = require('../../config/logger');
 
 /**
  * GET /webhook — Verify webhook with Meta
@@ -55,8 +56,16 @@ const handleWebhook = async (req, res) => {
 
         // Handle incoming messages
         if (value.messages?.length) {
+          const phoneNumberId = value.metadata?.phone_number_id;
+          const whatsappAccount = await WhatsAppAccount.findOne({ phoneNumberId });
+          
+          if (!whatsappAccount) {
+            logger.warn(`Unknown phone_number_id: ${phoneNumberId}`);
+            continue;
+          }
+
           for (const msg of value.messages) {
-            await processIncomingMessage(msg, value.contacts?.[0]);
+            await processIncomingMessage(msg, value.contacts?.[0], whatsappAccount);
           }
         }
 
@@ -73,7 +82,7 @@ const handleWebhook = async (req, res) => {
   }
 };
 
-const processIncomingMessage = async (msg, contact) => {
+const processIncomingMessage = async (msg, contact, whatsappAccount) => {
   try {
     const phone = msg.from;
     const messageId = msg.id;
@@ -93,11 +102,17 @@ const processIncomingMessage = async (msg, contact) => {
     logger.incomingMsg(`Incoming WhatsApp message from ${phone}: ${messageText}`);
 
     // 1. Find or create lead
-    let lead = await Lead.findOne({ phone });
+    let lead = await Lead.findOne({ 
+      companyId: whatsappAccount.companyId, 
+      whatsappAccountId: whatsappAccount._id, 
+      phone 
+    });
     const isNewLead = !lead;
 
     if (!lead) {
       lead = await Lead.create({
+        companyId: whatsappAccount.companyId,
+        whatsappAccountId: whatsappAccount._id,
         name: contactName,
         phone,
         source: LEAD_SOURCE.WHATSAPP,
@@ -110,7 +125,11 @@ const processIncomingMessage = async (msg, contact) => {
     // 2. Find or create conversation
     let conversation = await Conversation.findOne({ leadId: lead._id });
     if (!conversation) {
-      conversation = await Conversation.create({ leadId: lead._id });
+      conversation = await Conversation.create({ 
+        companyId: whatsappAccount.companyId,
+        whatsappAccountId: whatsappAccount._id,
+        leadId: lead._id 
+      });
       logger.conversation('New conversation started');
     }
 
@@ -120,6 +139,8 @@ const processIncomingMessage = async (msg, contact) => {
 
     // 4. Save incoming message
     const savedMessage = await Message.create({
+      companyId: whatsappAccount.companyId,
+      whatsappAccountId: whatsappAccount._id,
       conversationId: conversation._id,
       leadId: lead._id,
       direction: MESSAGE_DIRECTION.INCOMING,
@@ -138,10 +159,10 @@ const processIncomingMessage = async (msg, contact) => {
     });
 
     // 6. Mark message as read
-    await whatsappService.markMessageAsRead(messageId);
+    await whatsappMessageService.markMessageAsRead(whatsappAccount, messageId);
 
     // 7. Process Bot Logic
-    await botService.handleIncoming(conversation, lead, messageText, messageType, interactivePayload);
+    await botService.handleIncoming(whatsappAccount, conversation, lead, messageText, messageType, interactivePayload);
 
     // 8. Emit socket events
     const io = getIO();

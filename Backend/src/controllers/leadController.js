@@ -7,7 +7,7 @@ const getLeads = async (req, res, next) => {
     const { page = 1, limit = 20, search, status, source, assignedTo } = req.query;
     const skip = (page - 1) * limit;
 
-    const filter = { isActive: true };
+    const filter = { isActive: true, companyId: req.companyId };
 
     if (search) {
       filter.$or = [
@@ -38,7 +38,7 @@ const getLeads = async (req, res, next) => {
 
 const getLeadById = async (req, res, next) => {
   try {
-    const lead = await Lead.findById(req.params.id).populate('assignedTo', 'name email');
+    const lead = await Lead.findOne({ _id: req.params.id, companyId: req.companyId }).populate('assignedTo', 'name email');
     if (!lead || !lead.isActive) return sendError(res, 'Lead not found.', 404);
     return sendSuccess(res, lead, 'Lead retrieved.');
   } catch (error) {
@@ -48,7 +48,8 @@ const getLeadById = async (req, res, next) => {
 
 const createLead = async (req, res, next) => {
   try {
-    const lead = await Lead.create(req.body);
+    const leadData = { ...req.body, companyId: req.companyId };
+    const lead = await Lead.create(leadData);
     logger.lead(`New lead created: ${lead.name}`);
     logger.leadId(`Lead ID: ${lead._id}`);
     return sendSuccess(res, lead, 'Lead created.', 201);
@@ -59,8 +60,8 @@ const createLead = async (req, res, next) => {
 
 const updateLead = async (req, res, next) => {
   try {
-    const lead = await Lead.findByIdAndUpdate(
-      req.params.id,
+    const lead = await Lead.findOneAndUpdate(
+      { _id: req.params.id, companyId: req.companyId },
       req.body,
       { new: true, runValidators: true }
     ).populate('assignedTo', 'name email');
@@ -75,8 +76,8 @@ const updateLead = async (req, res, next) => {
 
 const deleteLead = async (req, res, next) => {
   try {
-    const lead = await Lead.findByIdAndUpdate(
-      req.params.id,
+    const lead = await Lead.findOneAndUpdate(
+      { _id: req.params.id, companyId: req.companyId },
       { isActive: false },
       { new: true }
     );

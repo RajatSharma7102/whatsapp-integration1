@@ -44,3 +44,14 @@ export interface Message {
   mediaUrl?: string;
   mediaType?: string;
 }
+
+export interface WhatsAppAccount {
+  _id: string;
+  displayName: string;
+  phoneNumber: string;
+  phoneNumberId: string;
+  department: string;
+  status: 'CONNECTED' | 'DISCONNECTED' | 'BANNED';
+  isDefault: boolean;
+  connectedAt: string;
+}
