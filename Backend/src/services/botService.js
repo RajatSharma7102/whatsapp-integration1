@@ -88,20 +88,16 @@ const saveBotReply = async (whatsappAccount, conversation, lead, replyText, waRe
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 class BotService {
   async handleIncoming(whatsappAccount, conversation, lead, incomingText, msgType, interactivePayload) {
-    // ── GATE: Only stop for HUMAN_ASSIGNED ──────────────────────────────────
-    // Bot is active for all states including COMPLETED (keeps listening)
-    if (conversation.botStatus === 'HUMAN_ASSIGNED') {
-      logger.info(`🤚 Bot skipped — HUMAN_ASSIGNED for ${lead.phone}`);
-      return;
-    }
-
     // ── Always reload fresh from DB to avoid stale state ────────────────────
     const freshConv = await Conversation.findById(conversation._id);
     const freshLead = await Lead.findById(lead._id);
     if (!freshConv || !freshLead) return;
 
-    // ── Skip if HUMAN_ASSIGNED in DB ────────────────────────────────────────
-    if (freshConv.botStatus === 'HUMAN_ASSIGNED') return;
+    // ── GATE: Skip if HUMAN_ASSIGNED ────────────────────────────────────────
+    if (freshConv.botStatus === 'HUMAN_ASSIGNED') {
+      logger.info(`🤚 Bot skipped — HUMAN_ASSIGNED for ${freshLead.phone}`);
+      return;
+    }
 
     let waResponse;
 

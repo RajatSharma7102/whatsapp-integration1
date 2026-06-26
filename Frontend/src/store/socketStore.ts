@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
 import { useConversationStore } from './conversationStore';
 import { useLeadStore } from './leadStore';
+import { useCompanyStore } from './companyStore';
 import { Lead, Message } from '../types';
 
 interface SocketState {
@@ -68,6 +69,20 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       if (activeConversation?._id === payload.conversationId) {
         setActiveConversation({ ...activeConversation, botStatus: payload.botStatus, assignedTo: payload.assignedTo }, activeLead);
       }
+    });
+
+    // Real-time: individual conversation bot status changed
+    socket.on('conversation_bot_status_updated', (payload: { conversationId: string, botStatus: string, assignedTo: any }) => {
+      const { activeConversation, setActiveConversation } = useConversationStore.getState();
+      const { activeLead } = useConversationStore.getState();
+      if (activeConversation?._id === payload.conversationId) {
+        setActiveConversation({ ...activeConversation, botStatus: payload.botStatus, assignedTo: payload.assignedTo }, activeLead);
+      }
+    });
+
+    // Real-time: global bot mode changed (broadcast to all tabs/agents)
+    socket.on('global_bot_mode_updated', (payload: { companyId: string, globalBotMode: 'BOT_ACTIVE' | 'HUMAN_ASSIGNED' }) => {
+      useCompanyStore.setState({ globalBotMode: payload.globalBotMode });
     });
 
     set({ socket });

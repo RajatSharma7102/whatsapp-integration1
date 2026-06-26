@@ -12,6 +12,7 @@ const leadRoutes = require('./src/routes/leadRoutes');
 const conversationRoutes = require('./src/routes/conversationRoutes');
 const whatsappRoutes = require('./src/routes/whatsappRoutes');
 const webhookRoutes = require('./src/routes/webhookRoutes');
+const companyRoutes = require('./src/routes/companyRoutes');
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/companies', companyRoutes);
 
 // 404 handler
 app.use(notFound);

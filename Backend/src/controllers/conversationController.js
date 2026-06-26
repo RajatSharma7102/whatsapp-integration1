@@ -3,6 +3,7 @@ const Message = require('../models/Message');
 const { sendSuccess, sendError, sendPaginated } = require('../utils/responseHelper');
 const { getIO } = require('../sockets/socketManager');
 const { SOCKET_EVENTS } = require('../constants');
+const logger = require('../config/logger');
 
 const getConversations = async (req, res, next) => {
   try {
@@ -124,4 +125,79 @@ const resumeBot = async (req, res, next) => {
   }
 };
 
-module.exports = { getConversations, getMessages, takeOverConversation, getConversationByLead, resumeBot };
+/**
+ * PATCH /api/conversations/:id/bot-status
+ * Unified endpoint to set bot status: BOT_ACTIVE | HUMAN_ASSIGNED
+ */
+const updateBotStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { botStatus } = req.body;
+
+    if (!['BOT_ACTIVE', 'HUMAN_ASSIGNED'].includes(botStatus)) {
+      return sendError(res, 'Invalid botStatus. Must be BOT_ACTIVE or HUMAN_ASSIGNED.', 400);
+    }
+
+    const conversation = await Conversation.findOne({ _id: id, companyId: req.companyId });
+    if (!conversation) return sendError(res, 'Conversation not found.', 404);
+
+    conversation.botStatus = botStatus;
+    if (botStatus === 'HUMAN_ASSIGNED' && req.user) {
+      conversation.assignedTo = req.user._id;
+    } else if (botStatus !== 'HUMAN_ASSIGNED') {
+      conversation.assignedTo = null;
+    }
+    await conversation.save();
+
+    const io = getIO();
+    if (io) {
+      io.emit('conversation_bot_status_updated', {
+        conversationId: id,
+        botStatus,
+        assignedTo: conversation.assignedTo,
+      });
+    }
+
+    return sendSuccess(res, { success: true, botStatus, conversation }, 'Bot status updated.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/conversations/bulk-bot-status
+ * Updates ALL open conversations for this company at once (powers the global toggle)
+ */
+const bulkUpdateBotStatus = async (req, res, next) => {
+  try {
+    const { botStatus } = req.body;
+
+    if (!['BOT_ACTIVE', 'HUMAN_ASSIGNED'].includes(botStatus)) {
+      return sendError(res, 'Invalid botStatus. Must be BOT_ACTIVE or HUMAN_ASSIGNED.', 400);
+    }
+
+    const updateData = { botStatus };
+    if (botStatus !== 'HUMAN_ASSIGNED') updateData.assignedTo = null;
+
+    const result = await Conversation.updateMany(
+      { companyId: req.companyId, isOpen: true },
+      { $set: updateData }
+    );
+
+    logger.info(`🌐 Bulk bot status update → ${botStatus} (${result.modifiedCount} conversations, Company: ${req.companyId})`);
+
+    const io = getIO();
+    if (io) {
+      io.emit('global_bot_mode_updated', {
+        companyId: req.companyId.toString(),
+        globalBotMode: botStatus,
+      });
+    }
+
+    return sendSuccess(res, { success: true, botStatus, modifiedCount: result.modifiedCount }, 'All conversations updated.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getConversations, getMessages, takeOverConversation, getConversationByLead, resumeBot, updateBotStatus, bulkUpdateBotStatus };

@@ -20,5 +20,9 @@ export const conversationService = {
   resumeBot: async (conversationId: string) => {
     const res = await api.patch(`/conversations/${conversationId}/resume-bot`);
     return res.data;
+  },
+  updateBotStatus: async (conversationId: string, botStatus: 'BOT_ACTIVE' | 'HUMAN_ASSIGNED' | 'USE_GLOBAL') => {
+    const res = await api.patch(`/conversations/${conversationId}/bot-status`, { botStatus });
+    return res.data;
   }
 };

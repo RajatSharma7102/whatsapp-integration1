@@ -15,6 +15,7 @@ interface ConversationState {
   sendMessage: (leadId: string, message: string) => Promise<void>;
   takeOverConversation: (conversationId: string) => Promise<void>;
   resumeBot: (conversationId: string) => Promise<void>;
+  updateBotStatus: (conversationId: string, botStatus: 'BOT_ACTIVE' | 'HUMAN_ASSIGNED' | 'USE_GLOBAL') => Promise<void>;
   
   // Real-time mutations
   addMessage: (message: Message) => void;
@@ -77,6 +78,16 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       set({ activeConversation: updated });
     } catch (error) {
       console.error('Failed to resume bot:', error);
+    }
+  },
+
+  updateBotStatus: async (conversationId, botStatus) => {
+    try {
+      const res = await conversationService.updateBotStatus(conversationId, botStatus);
+      const updated = res.data?.conversation || res.data || res;
+      set({ activeConversation: updated });
+    } catch (error) {
+      console.error('Failed to update bot status:', error);
     }
   },
 

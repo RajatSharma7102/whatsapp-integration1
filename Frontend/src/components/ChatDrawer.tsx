@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Paperclip, Send, Smile, Check, CheckCheck, Loader2 } from "lucide-react"
+import { X, Paperclip, Send, Smile, Check, CheckCheck, Loader2, Bot, UserCheck } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -29,8 +29,7 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
     sendingMessage,
     setActiveConversation,
     sendMessage,
-    takeOverConversation,
-    resumeBot,
+    updateBotStatus,
     activeConversation
   } = useConversationStore()
 
@@ -65,30 +64,27 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
     if (!inputText.trim() || !lead) return
     const text = inputText.trim()
     setInputText("")
-    
+
     await sendMessage(lead._id, text)
-    // Refresh conversation if it's new
     if (!activeConversation) {
-       try {
-         const res = await conversationService.getByLead(lead._id)
-         if (res.data) setActiveConversation(res.data, lead)
-       } catch (e) {}
+      try {
+        const res = await conversationService.getByLead(lead._id)
+        if (res.data) setActiveConversation(res.data, lead)
+      } catch (e) {}
     }
   }
 
   const handleTakeOver = () => {
-    if (activeConversation) {
-      takeOverConversation(activeConversation._id)
-    }
+    if (activeConversation) updateBotStatus(activeConversation._id, 'HUMAN_ASSIGNED')
   }
 
   const handleResumeBot = () => {
-    if (activeConversation) {
-      resumeBot(activeConversation._id)
-    }
+    if (activeConversation) updateBotStatus(activeConversation._id, 'BOT_ACTIVE')
   }
 
   if (!isOpen || !lead) return null
+
+  const isHuman = activeConversation?.botStatus === 'HUMAN_ASSIGNED'
 
   return (
     <AnimatePresence>
@@ -151,8 +147,8 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
                   Agent: <span className="font-medium text-slate-600">{lead.assignedTo?.name || 'Unassigned'}</span>
                 </span>
               </div>
-              
-              {/* Bot Qualification Info & Take Over */}
+
+              {/* Bot Qualification Info & Bot/Human Toggle */}
               <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
                 <div className="grid grid-cols-2 gap-0 divide-x divide-slate-100">
                   <div className="p-2">
@@ -176,22 +172,41 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
                     <span className="text-[10px] font-medium text-slate-600 font-mono">{lead.contactNumber}</span>
                   </div>
                 )}
+
+                {/* Bot/Human Status Row */}
                 <div className="px-2 py-1.5 border-t border-slate-100 flex justify-between items-center">
                   <span className="text-[10px] text-slate-400">
-                    Bot: <span className={`font-semibold ${activeConversation?.botStatus === 'BOT_ACTIVE' ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {activeConversation?.botStatus === 'BOT_ACTIVE' ? `Active (${activeConversation?.botState})` : 'Human Assigned'}
+                    Bot:{" "}
+                    <span className={`font-semibold ${isHuman ? 'text-amber-600' : 'text-violet-600'}`}>
+                      {isHuman ? 'Human Assigned' : `Active (${activeConversation?.botState || '...'})`}
                     </span>
                   </span>
-                  {activeConversation?.botStatus === 'BOT_ACTIVE' ? (
-                    <Button onClick={handleTakeOver} size="sm" className="h-6 text-[10px] bg-amber-500 hover:bg-amber-600 text-white">
-                      Take Over 🧑‍💼
-                    </Button>
-                  ) : (
-                    <div className="flex gap-1">
-                      <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Agent Active</Badge>
-                      <Button onClick={handleResumeBot} size="sm" className="h-6 text-[10px] bg-violet-500 hover:bg-violet-600 text-white">
-                        Resume Bot 🤖
-                      </Button>
+
+                  {/* Simple Bot / Human toggle (like original) */}
+                  {activeConversation && (
+                    <div className="flex items-center gap-1">
+                      {isHuman ? (
+                        <>
+                          <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200 border">
+                            Agent Active
+                          </Badge>
+                          <Button
+                            onClick={handleResumeBot}
+                            size="sm"
+                            className="h-6 text-[10px] bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-1"
+                          >
+                            <Bot size={10} /> Resume Bot
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          onClick={handleTakeOver}
+                          size="sm"
+                          className="h-6 text-[10px] bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1"
+                        >
+                          <UserCheck size={10} /> Take Over
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
