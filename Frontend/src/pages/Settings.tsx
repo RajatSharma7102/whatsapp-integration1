@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useWhatsAppStore } from "@/store/whatsappStore"
 import { launchWhatsAppSignup } from "@/lib/facebookSdk"
 import { Phone, CheckCircle2, XCircle, Loader2, Star, MessageSquare, PowerOff } from "lucide-react"
+import { TeamsSection } from "@/components/TeamsSection"
 
 export default function Settings() {
   const { accounts, isLoading, fetchAccounts, connectAccount } = useWhatsAppStore()
@@ -129,6 +130,9 @@ export default function Settings() {
           )}
         </div>
       </div>
+
+      {/* Teams Section */}
+      <TeamsSection />
     </div>
   )
 }

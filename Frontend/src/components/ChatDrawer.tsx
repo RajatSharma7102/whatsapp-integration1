@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Paperclip, Send, Smile, Check, CheckCheck, Loader2, Bot, UserCheck } from "lucide-react"
+import { X, Paperclip, Send, Smile, Check, CheckCheck, Loader2, Bot, UserCheck, Users, ChevronDown } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Lead } from "@/types"
 import { conversationService } from "@/services/conversation.service"
 import { useConversationStore } from "@/store/conversationStore"
+import { useTeamStore } from "@/store/teamStore"
+import { leadService } from "@/services/lead.service"
 
 interface ChatDrawerProps {
   isOpen: boolean
   onClose: () => void
   lead: Lead | null
+  onLeadUpdate?: (id: string, updates: Partial<Lead>) => void
 }
 
 const formatTime = (dateStr?: string) => {
@@ -19,8 +22,10 @@ const formatTime = (dateStr?: string) => {
   return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
+export function ChatDrawer({ isOpen, onClose, lead, onLeadUpdate }: ChatDrawerProps) {
   const [inputText, setInputText] = useState("")
+  const [showTeamMenu, setShowTeamMenu] = useState(false)
+  const [assigningTeam, setAssigningTeam] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -32,6 +37,23 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
     updateBotStatus,
     activeConversation
   } = useConversationStore()
+
+  const { teams } = useTeamStore()
+
+  const handleAssignTeam = async (teamId: string | null) => {
+    if (!lead) return
+    setAssigningTeam(true)
+    setShowTeamMenu(false)
+    try {
+      await leadService.updateLead(lead._id, { teamId } as any)
+      const teamObj = teamId ? teams.find(t => t._id === teamId) || null : null
+      onLeadUpdate?.(lead._id, { teamId: teamObj })
+    } catch (e) {
+      console.error('Failed to assign team', e)
+    } finally {
+      setAssigningTeam(false)
+    }
+  }
 
   useEffect(() => {
     if (!isOpen || !lead) {
@@ -211,7 +233,52 @@ export function ChatDrawer({ isOpen, onClose, lead }: ChatDrawerProps) {
                   )}
                 </div>
               </div>
+
+                {/* Team Assignment Row */}
+                <div className="px-2 py-1.5 border-t border-slate-100 flex justify-between items-center relative">
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <Users size={10} />
+                    Team:{" "}
+                    {lead.teamId && typeof lead.teamId === 'object' ? (
+                      <span className="font-semibold" style={{ color: lead.teamId.color }}>{lead.teamId.name}</span>
+                    ) : (
+                      <span className="text-slate-400">None</span>
+                    )}
+                  </span>
+                  {teams.length > 0 && (
+                    <button
+                      onClick={() => setShowTeamMenu(v => !v)}
+                      disabled={assigningTeam}
+                      className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition-colors disabled:opacity-50"
+                    >
+                      {assigningTeam ? <Loader2 size={9} className="animate-spin" /> : <ChevronDown size={9} />}
+                      Assign
+                    </button>
+                  )}
+                  {showTeamMenu && (
+                    <div className="absolute right-2 top-8 z-50 bg-white border border-slate-200 rounded-xl shadow-xl w-44 py-1 text-xs">
+                      <button
+                        onClick={() => handleAssignTeam(null)}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-500 flex items-center gap-2"
+                      >
+                        <span className="h-2 w-2 rounded-full bg-slate-300" /> No Team
+                      </button>
+                      {teams.map(team => (
+                        <button
+                          key={team._id}
+                          onClick={() => handleAssignTeam(team._id)}
+                          className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                          style={{ color: team.color }}
+                        >
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: team.color }} />
+                          {team.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
             </div>
+
 
             {/* ── Messages ── */}
             <div className="flex-1 overflow-y-auto bg-[#ECE5DD]/30 p-4">

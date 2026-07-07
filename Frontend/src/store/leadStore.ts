@@ -11,8 +11,10 @@ interface LeadState {
   limit: number;
   search: string;
   statusFilter: string;
-  
-  setFilters: (filters: { search?: string; status?: string; page?: number }) => void;
+  teamFilter: string;
+
+  setFilters: (filters: { search?: string; status?: string; page?: number; teamId?: string }) => void;
+  setTeamFilter: (teamId: string) => void;
   fetchLeads: () => Promise<void>;
   addLead: (lead: Lead) => void;
   updateLead: (id: string, updates: Partial<Lead>) => void;
@@ -27,21 +29,28 @@ export const useLeadStore = create<LeadState>((set, get) => ({
   limit: 20,
   search: '',
   statusFilter: '',
+  teamFilter: '',
 
   setFilters: (filters) => {
     set({ ...filters, page: filters.page ?? 1 });
     get().fetchLeads();
   },
 
+  setTeamFilter: (teamId: string) => {
+    set({ teamFilter: teamId, page: 1 });
+    get().fetchLeads();
+  },
+
   fetchLeads: async () => {
     set({ loading: true, error: null });
     try {
-      const { page, limit, search, statusFilter } = get();
+      const { page, limit, search, statusFilter, teamFilter } = get();
       const response = await leadService.getLeads({ 
         page, 
         limit, 
         search, 
-        status: statusFilter || undefined 
+        status: statusFilter || undefined,
+        teamId: teamFilter || undefined,
       });
       set({ 
         leads: response.data, 

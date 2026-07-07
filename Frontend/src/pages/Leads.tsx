@@ -4,27 +4,32 @@ import { ChatDrawer } from "@/components/ChatDrawer"
 import { Lead } from "@/types"
 import { useLeadStore } from "@/store/leadStore"
 import { useSocketStore } from "@/store/socketStore"
+import { useTeamStore } from "@/store/teamStore"
 import { CreateLeadModal } from "@/components/CreateLeadModal"
+import { Users } from "lucide-react"
 
 export default function Leads() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  
-  const { leads, total, fetchLeads } = useLeadStore()
+
+  const { leads, total, fetchLeads, updateLead, teamFilter, setTeamFilter } = useLeadStore()
   const { connect, disconnect } = useSocketStore()
+  const { teams, fetchTeams } = useTeamStore()
 
   useEffect(() => {
     fetchLeads()
+    fetchTeams()
     connect()
-    return () => {
-      disconnect()
-    }
-  }, [fetchLeads, connect, disconnect])
+    return () => { disconnect() }
+  }, [fetchLeads, fetchTeams, connect, disconnect])
 
   const handleOpenChat = (lead: Lead) => {
     setSelectedLead(lead)
     setIsDrawerOpen(true)
+    if ((lead.unreadCount ?? 0) > 0) {
+      updateLead(lead._id, { unreadCount: 0 })
+    }
   }
 
   const handleCloseChat = () => {
@@ -46,7 +51,7 @@ export default function Leads() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Total Leads", value: total.toString(), color: "from-violet-500 to-purple-600", icon: "👥" },
           { label: "New", value: leads.filter(l => l.status === "New").length.toString(), color: "from-sky-500 to-blue-600", icon: "✨" },
@@ -63,13 +68,48 @@ export default function Leads() {
         ))}
       </div>
 
+      {/* Team Filter Bar */}
+      {teams.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="flex items-center gap-1 text-xs font-medium text-slate-500">
+            <Users size={13} /> Filter by Team:
+          </span>
+          <button
+            onClick={() => setTeamFilter('')}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              !teamFilter
+                ? 'bg-slate-800 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            All Teams
+          </button>
+          {teams.map(team => (
+            <button
+              key={team._id}
+              onClick={() => setTeamFilter(teamFilter === team._id ? '' : team._id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
+                teamFilter === team._id ? 'text-white' : 'text-white/80 hover:opacity-100'
+              }`}
+              style={{
+                backgroundColor: teamFilter === team._id ? team.color : `${team.color}99`,
+              }}
+            >
+              <Users size={10} />
+              {team.name}
+              {team.leadCount ? <span className="ml-0.5 opacity-80">({team.leadCount})</span> : null}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Lead Table Card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <LeadTable leads={leads} onOpenChat={handleOpenChat} />
+        <LeadTable leads={leads} onOpenChat={handleOpenChat} onLeadUpdate={updateLead} />
       </div>
 
       {/* Chat Drawer */}
-      <ChatDrawer isOpen={isDrawerOpen} onClose={handleCloseChat} lead={selectedLead} />
+      <ChatDrawer isOpen={isDrawerOpen} onClose={handleCloseChat} lead={selectedLead} onLeadUpdate={updateLead} />
 
       {/* Create Lead Modal */}
       <CreateLeadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />

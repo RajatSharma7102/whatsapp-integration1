@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import { TableCell, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -7,15 +7,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"
+import { MoreHorizontal, Eye, Edit, Trash2, Users, X } from "lucide-react"
 import { WhatsAppButton } from "@/components/WhatsAppButton"
 import { Lead } from "@/types"
+import { useTeamStore } from "@/store/teamStore"
+import { leadService } from "@/services/lead.service"
 
 interface LeadRowProps {
   lead: Lead
   onOpenChat: (lead: Lead) => void
+  onLeadUpdate?: (id: string, updates: Partial<Lead>) => void
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -45,7 +52,8 @@ const sourceConfig: Record<string, { emoji: string; color: string }> = {
   Google: { emoji: "🔍", color: "text-amber-600" },
 }
 
-export function LeadRow({ lead, onOpenChat }: LeadRowProps) {
+export function LeadRow({ lead, onOpenChat, onLeadUpdate }: LeadRowProps) {
+  const { teams } = useTeamStore()
   const status = statusConfig[lead.status] || { label: lead.status, className: "bg-slate-100 text-slate-600" }
   const source = sourceConfig[lead.source] ?? { emoji: "📋", color: "text-slate-600" }
   const createdDate = new Date(lead.createdAt).toLocaleDateString("en-IN", {
@@ -53,6 +61,16 @@ export function LeadRow({ lead, onOpenChat }: LeadRowProps) {
     month: "short",
     year: "numeric",
   })
+
+  const handleAssignTeam = async (teamId: string | null) => {
+    try {
+      await leadService.updateLead(lead._id, { teamId } as any)
+      const teamObj = teamId ? teams.find(t => t._id === teamId) || null : null
+      onLeadUpdate?.(lead._id, { teamId: teamObj })
+    } catch (e) {
+      console.error("Failed to assign team", e)
+    }
+  }
 
   return (
     <TableRow className="group hover:bg-slate-50/70 transition-colors border-slate-100">
@@ -67,13 +85,19 @@ export function LeadRow({ lead, onOpenChat }: LeadRowProps) {
           </Avatar>
           <div>
             <p className="font-semibold text-slate-800 text-sm leading-tight">{lead.name}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">{lead.assignedTo?.name || "Unassigned"}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-[11px] text-slate-400">{lead.assignedTo?.name || "Unassigned"}</p>
+              {lead.teamId && typeof lead.teamId === 'object' && (
+                <span
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white"
+                  style={{ backgroundColor: lead.teamId.color }}
+                >
+                  <Users size={8} />
+                  {lead.teamId.name}
+                </span>
+              )}
+            </div>
           </div>
-          {(lead.unreadCount ?? 0) > 0 && (
-            <span className="ml-1 h-5 min-w-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center px-1.5">
-              {lead.unreadCount}
-            </span>
-          )}
         </div>
       </TableCell>
 
@@ -132,7 +156,55 @@ export function LeadRow({ lead, onOpenChat }: LeadRowProps) {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-48">
+
+              {/* Assign Team submenu */}
+              {teams.length > 0 && (
+                <>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="gap-2 text-sm">
+                      <Users className="h-3.5 w-3.5 text-indigo-500" />
+                      <span>Assign Team</span>
+                      {lead.teamId && typeof lead.teamId === 'object' && (
+                        <span
+                          className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                          style={{ backgroundColor: lead.teamId.color }}
+                        >
+                          {lead.teamId.name}
+                        </span>
+                      )}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-44">
+                      {lead.teamId && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => handleAssignTeam(null)}
+                            className="gap-2 text-sm text-slate-500"
+                          >
+                            <X className="h-3.5 w-3.5" /> Remove Team
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      {teams.map(team => (
+                        <DropdownMenuItem
+                          key={team._id}
+                          onClick={() => handleAssignTeam(team._id)}
+                          className="gap-2 text-sm font-medium"
+                        >
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: team.color }}
+                          />
+                          {team.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+
               <DropdownMenuItem className="gap-2 text-sm">
                 <Edit className="h-3.5 w-3.5" /> Edit Lead
               </DropdownMenuItem>

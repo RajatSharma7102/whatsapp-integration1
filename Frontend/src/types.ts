@@ -1,3 +1,14 @@
+export interface Team {
+  _id: string;
+  name: string;
+  description?: string;
+  color: string;
+  members: any[];
+  leadCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Lead {
   _id: string;
   name: string;
@@ -12,7 +23,9 @@ export interface Lead {
   selectedServices?: string[];
   requirement?: string;
   assignedTo?: any;
+  teamId?: Team | null;
   isActive: boolean;
+  unreadCount?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -35,16 +35,21 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on('new_message', (payload: { conversationId: string, leadId: string, lead: Lead, message: Message, isNewLead?: boolean }) => {
       const { activeConversation, addMessage } = useConversationStore.getState();
-      
+
       // If it's for the currently open chat, append it
       if (activeConversation?._id === payload.conversationId) {
         addMessage(payload.message);
+      } else {
+        // Chat not open → increment unread badge for that lead
+        const { leads, updateLead } = useLeadStore.getState();
+        const lead = leads.find(l => l._id === payload.leadId);
+        if (lead) {
+          updateLead(payload.leadId, { unreadCount: (lead.unreadCount ?? 0) + 1 });
+        } else {
+          // New lead not in list yet — full refresh
+          useLeadStore.getState().fetchLeads();
+        }
       }
-      
-      // Update leads list unread count
-      // This requires fetching or updating leadStore appropriately. 
-      // A quick refetch or optimistic update works here.
-      useLeadStore.getState().fetchLeads();
     });
 
     socket.on('message_status_update', (payload: { messageId: string, status: any, conversationId: string }) => {

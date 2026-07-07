@@ -13,9 +13,10 @@ import { Lead } from "@/types"
 interface LeadTableProps {
   leads: Lead[]
   onOpenChat: (lead: Lead) => void
+  onLeadUpdate?: (id: string, updates: Partial<Lead>) => void
 }
 
-export function LeadTable({ leads, onOpenChat }: LeadTableProps) {
+export function LeadTable({ leads, onOpenChat, onLeadUpdate }: LeadTableProps) {
   return (
     <div>
       {/* Table Header */}
@@ -47,7 +48,7 @@ export function LeadTable({ leads, onOpenChat }: LeadTableProps) {
           </TableHeader>
           <TableBody>
             {leads.map((lead) => (
-              <LeadRow key={lead._id} lead={lead} onOpenChat={onOpenChat} />
+              <LeadRow key={lead._id} lead={lead} onOpenChat={onOpenChat} onLeadUpdate={onLeadUpdate} />
             ))}
           </TableBody>
         </Table>

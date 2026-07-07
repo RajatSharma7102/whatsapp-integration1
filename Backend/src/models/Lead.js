@@ -29,6 +29,7 @@ const leadSchema = new mongoose.Schema({
   selectedServices: [{ type: String }],
   requirement: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
+  teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null, index: true },
 }, { timestamps: true });
 
 // Text search index
