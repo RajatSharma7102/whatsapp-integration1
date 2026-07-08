@@ -38,7 +38,7 @@ export function ChatDrawer({ isOpen, onClose, lead, onLeadUpdate }: ChatDrawerPr
     activeConversation
   } = useConversationStore()
 
-  const { teams } = useTeamStore()
+  const { teams, fetchTeams } = useTeamStore()
 
   const handleAssignTeam = async (teamId: string | null) => {
     if (!lead) return
@@ -48,6 +48,8 @@ export function ChatDrawer({ isOpen, onClose, lead, onLeadUpdate }: ChatDrawerPr
       await leadService.updateLead(lead._id, { teamId } as any)
       const teamObj = teamId ? teams.find(t => t._id === teamId) || null : null
       onLeadUpdate?.(lead._id, { teamId: teamObj })
+      // Refresh team counts in filter bar
+      fetchTeams()
     } catch (e) {
       console.error('Failed to assign team', e)
     } finally {

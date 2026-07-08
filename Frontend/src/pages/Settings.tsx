@@ -38,10 +38,10 @@ export default function Settings() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Settings</h1>
-        <p className="text-slate-500 mt-1">Manage your company integrations and WhatsApp numbers.</p>
+    <div className="max-w-3xl">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-slate-800 tracking-tight">Settings</h1>
+        <p className="text-slate-500 mt-1 text-sm">Manage your company integrations and WhatsApp numbers.</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
