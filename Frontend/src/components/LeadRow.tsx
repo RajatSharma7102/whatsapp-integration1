@@ -21,7 +21,7 @@ interface LeadRowProps {
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  New:              { label: "New Lead",     className: "bg-sky-50 text-sky-700 border-sky-200" },
+  New:              { label: "New Query",     className: "bg-sky-50 text-sky-700 border-sky-200" },
   Interested:       { label: "Interested",   className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   "Follow Up":      { label: "Follow Up",    className: "bg-amber-50 text-amber-700 border-amber-200" },
   Qualified:        { label: "Qualified",    className: "bg-violet-50 text-violet-700 border-violet-200" },
@@ -178,7 +178,7 @@ export function LeadRow({ lead, onOpenChat, onLeadUpdate }: LeadRowProps) {
               )}
 
               <DropdownMenuItem className="gap-2 text-sm">
-                <Edit className="h-3.5 w-3.5" /> Edit Lead
+                <Edit className="h-3.5 w-3.5" /> Edit Query
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-2 text-sm text-red-600 focus:text-red-600">
                 <Trash2 className="h-3.5 w-3.5" /> Delete

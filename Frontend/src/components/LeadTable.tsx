@@ -38,7 +38,7 @@ export function LeadTable({ leads, onOpenChat, onLeadUpdate }: LeadTableProps) {
           />
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-400">
-          <span>{leads.length} leads</span>
+          <span>{leads.length} queries</span>
           <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 text-xs font-medium transition-colors">
             <SlidersHorizontal size={13} /> Filter
           </button>
@@ -62,7 +62,7 @@ export function LeadTable({ leads, onOpenChat, onLeadUpdate }: LeadTableProps) {
             {leads.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-16 text-slate-400 text-sm">
-                  No leads found
+                  No queries found
                 </TableCell>
               </TableRow>
             ) : (

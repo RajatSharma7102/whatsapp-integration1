@@ -56,7 +56,7 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
-    { name: 'Leads', path: '/', icon: Users, badge: null },
+    { name: 'Queries', path: '/', icon: Users, badge: null },
     { name: 'Settings', path: '/settings', icon: Settings, badge: null },
   ];
 
@@ -98,13 +98,12 @@ export function Layout() {
 
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 h-16 border-b border-white/10 shrink-0">
-            <div className="h-9 w-9 rounded-xl flex items-center justify-center shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
-              <span className="text-white font-bold text-sm">BD</span>
+            <div className="h-9 w-9 rounded-xl flex items-center justify-center shadow-lg bg-white overflow-hidden shrink-0">
+              <img src="/logo.jpeg" alt="Logo" className="h-full w-full object-contain p-0.5" />
             </div>
-            <div>
-              <p className="text-white font-bold text-sm leading-tight">Bugs Desk 360</p>
-              <p className="text-white/40 text-[10px] font-medium tracking-wider uppercase">CRM</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-bold text-sm leading-tight truncate">BugsDesk</p>
+              <p className="text-white/40 text-[9px] font-medium tracking-wide uppercase truncate">Powered by Marketing Bugs</p>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="ml-auto text-white/40 hover:text-white lg:hidden">
               <X size={18} />
@@ -188,7 +187,7 @@ export function Layout() {
 
         {/* Top Bar */}
         <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm shrink-0">
-          <div className="px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          <div className="px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
             {/* Mobile menu btn */}
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500 hover:text-slate-800 p-1">
               <Menu size={20} />
@@ -199,7 +198,7 @@ export function Layout() {
               <Search size={15} className="text-slate-400 shrink-0" />
               <input
                 type="text"
-                placeholder="Search leads..."
+                placeholder="Search queries..."
                 className="bg-transparent text-sm text-slate-700 placeholder-slate-400 outline-none w-full"
               />
             </div>

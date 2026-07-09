@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 
 const STAGES = [
-  "New Lead", "Assigned", "Contacted", "Qualified",
+  "New Query", "Assigned", "Contacted", "Qualified",
   "Demo Scheduled", "Proposal Sent", "Negotiation",
   "Decision Pending", "Won / Converted", "Lost", "On Hold",
   "Not Interested", "Callback Requested"
@@ -57,11 +57,11 @@ export default function Leads() {
   const unassignedCount = leads.filter(l => !l.assignedTo).length
 
   const stats = [
-    { label: "Total Leads", value: total.toString(), icon: BarChart3, iconBg: "bg-slate-800", iconColor: "text-white" },
-    { label: "New Leads", value: newCount.toString(), icon: Zap, iconBg: "bg-violet-600", iconColor: "text-white" },
+    { label: "Total Queries", value: total.toString(), icon: BarChart3, iconBg: "bg-slate-800", iconColor: "text-white" },
+    { label: "New Queries", value: newCount.toString(), icon: Zap, iconBg: "bg-violet-600", iconColor: "text-white" },
     { label: "Qualified", value: qualifiedCount.toString(), icon: Target, iconBg: "bg-blue-600", iconColor: "text-white" },
     { label: "Unassigned", value: unassignedCount.toString(), icon: UserX, iconBg: "bg-orange-500", iconColor: "text-white" },
-    { label: "Open Leads", value: leads.filter(l => l.isActive).length.toString(), icon: Zap, iconBg: "bg-orange-500", iconColor: "text-white" },
+    { label: "Open Queries", value: leads.filter(l => l.isActive).length.toString(), icon: Zap, iconBg: "bg-orange-500", iconColor: "text-white" },
     { label: "Follow Up", value: leads.filter(l => l.status === "Follow Up").length.toString(), icon: Clock, iconBg: "bg-blue-600", iconColor: "text-white" },
     { label: "Interested", value: leads.filter(l => l.status === "Interested").length.toString(), icon: TrendingUp, iconBg: "bg-emerald-600", iconColor: "text-white" },
     { label: "Teams Active", value: teams.length.toString(), icon: Users, iconBg: "bg-violet-600", iconColor: "text-white" },
@@ -72,15 +72,15 @@ export default function Leads() {
       {/* ── Header Row ── */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-800 tracking-tight">Lead Management</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Track and manage all your leads in one place</p>
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">Query Management</h1>
+          <p className="text-slate-500 text-sm mt-0.5">Track and manage all your queries in one place</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
           style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
         >
-          <Plus size={16} /> New Lead
+          <Plus size={16} /> New Query
         </button>
       </div>
 
@@ -102,7 +102,7 @@ export default function Leads() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Stages</span>
-            <span className="text-xs text-slate-400">{leads.length} matching leads</span>
+            <span className="text-xs text-slate-400">{leads.length} matching queries</span>
           </div>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-2">
@@ -121,9 +121,9 @@ export default function Leads() {
         <div className="flex items-center justify-between px-5 pt-4 pb-0 border-b border-slate-100">
           <div className="flex items-center gap-1">
             {[
-              { key: "own", label: "Own Leads", count: leads.length },
+              { key: "own", label: "Own Queries", count: leads.length },
               { key: "team", label: "My Team", count: leads.length },
-              { key: "all", label: "All Leads", count: total },
+              { key: "all", label: "All Queries", count: total },
             ].map(tab => (
               <button
                 key={tab.key}
