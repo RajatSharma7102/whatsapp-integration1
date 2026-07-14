@@ -70,9 +70,9 @@ export function LeadRow({ lead, onOpenChat, onLeadUpdate }: LeadRowProps) {
       <TableCell className="pl-5 py-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8 shrink-0">
-            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${lead.name.replace(" ", "")}`} />
+
             <AvatarFallback className="text-xs font-bold text-white"
-              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #ec4899)' }}>
               {lead.name.charAt(0)}
             </AvatarFallback>
           </Avatar>
@@ -130,7 +130,7 @@ export function LeadRow({ lead, onOpenChat, onLeadUpdate }: LeadRowProps) {
 
       {/* Actions */}
       <TableCell className="py-3 pr-5 text-right">
-        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-end gap-1 transition-opacity">
           <WhatsAppButton lead={lead} onClick={() => onOpenChat(lead)} />
 
           <DropdownMenu>

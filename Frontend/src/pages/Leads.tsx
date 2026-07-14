@@ -78,7 +78,7 @@ export default function Leads() {
         <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
-          style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+          style={{ background: 'linear-gradient(135deg, #3b82f6, #ec4899)' }}
         >
           <Plus size={16} /> New Query
         </button>

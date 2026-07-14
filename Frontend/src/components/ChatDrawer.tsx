@@ -135,7 +135,7 @@ export function ChatDrawer({ isOpen, onClose, lead, onLeadUpdate }: ChatDrawerPr
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white shrink-0">
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 border-2 border-emerald-100">
-                  <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${lead.name.replace(" ", "")}`} />
+
                   <AvatarFallback className="bg-emerald-50 text-emerald-700 font-bold">
                     {lead.name.charAt(0)}
                   </AvatarFallback>

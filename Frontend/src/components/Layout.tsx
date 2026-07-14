@@ -128,7 +128,7 @@ export function Layout() {
                 >
                   {isActive && (
                     <span className="absolute inset-0 rounded-xl"
-                      style={{ background: 'linear-gradient(135deg, #7c3aed33, #4f46e533)', border: '1px solid #7c3aed44' }} />
+                      style={{ background: 'linear-gradient(135deg, #3b82f633, #ec489933)', border: '1px solid #3b82f644' }} />
                   )}
                   <span className={`relative z-10 p-1.5 rounded-lg transition-colors ${isActive ? 'text-violet-300' : 'text-white/40 group-hover:text-white/70'}`}>
                     <item.icon size={16} />
@@ -167,7 +167,7 @@ export function Layout() {
           <div className="px-4 py-4 border-t border-white/10 shrink-0">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #ec4899)' }}>
                 {user?.name?.[0]?.toUpperCase() || 'A'}
               </div>
               <div className="flex-1 min-w-0">
@@ -209,7 +209,7 @@ export function Layout() {
                 <Bell size={18} />
               </button>
               <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #ec4899)' }}>
                 {user?.name?.[0]?.toUpperCase() || 'A'}
               </div>
               <span className="text-sm font-medium text-slate-700 hidden sm:block">{user?.name || 'User'}</span>
