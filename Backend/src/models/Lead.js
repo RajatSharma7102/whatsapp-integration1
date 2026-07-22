@@ -4,6 +4,7 @@ const { LEAD_STATUS, LEAD_SOURCE } = require('../constants');
 const leadSchema = new mongoose.Schema({
   companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
   whatsappAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'WhatsAppAccount', required: true, index: true },
+  zohoLeadId: { type: String, sparse: true, index: true },
   name: { type: String, required: true, trim: true },
   email: { type: String, lowercase: true, trim: true, sparse: true },
   phone: { type: String, required: true, trim: true },

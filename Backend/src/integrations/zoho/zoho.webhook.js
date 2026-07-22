@@ -1,8 +1,11 @@
 const handleWebhook = async (req, res) => {
-    const payload = req.body;
-    // Logic to process incoming webhooks from Zoho
-    console.log('Received Zoho Webhook:', payload);
-    res.status(200).send('OK');
+    console.log("========== ZOHO WEBHOOK ==========");
+    console.log(req.body);
+    console.log("=================================");
+
+    res.status(200).json({
+        success: true
+    });
 };
 
 module.exports = {

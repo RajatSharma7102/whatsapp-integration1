@@ -15,6 +15,7 @@ module.exports = {
     GOOGLE: 'Google',
     REFERRAL: 'Referral',
     MANUAL: 'Manual',
+    ZOHO: 'zoho',
   },
   MESSAGE_DIRECTION: {
     INCOMING: 'incoming',

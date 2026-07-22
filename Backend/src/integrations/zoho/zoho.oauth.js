@@ -101,6 +101,11 @@ const callback = async (req, res) => {
                 connected: true
             });
             
+            // Trigger lead import asynchronously to not block the redirect
+            zohoService.importLeads(companyId).catch(err => {
+                console.error("Async Zoho lead import failed:", err.message);
+            });
+            
             // Redirect back to frontend settings page
             const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
             res.redirect(`${frontendUrl}/settings?zoho_connected=true`);

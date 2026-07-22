@@ -38,8 +38,14 @@ const disconnect = async (req, res) => {
 };
 
 const syncData = async (req, res) => {
-    // Trigger manual sync
-    res.status(200).json({ message: 'Sync started' });
+    try {
+        const companyId = req.user.companyId;
+        const result = await zohoService.importLeads(companyId);
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error syncing Zoho data:', error);
+        res.status(500).json({ message: 'Failed to sync Zoho data', details: error.message });
+    }
 };
 
 module.exports = {
