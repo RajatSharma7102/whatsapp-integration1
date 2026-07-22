@@ -10,13 +10,37 @@ export default function Settings() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [isConnectingZoho, setIsConnectingZoho] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
+  const [successMsg, setSuccessMsg] = useState("")
+  const [zohoStatus, setZohoStatus] = useState<any>(null)
+  const [isLoadingZohoStatus, setIsLoadingZohoStatus] = useState(true)
+
+  const loadZohoStatus = async () => {
+    try {
+      setIsLoadingZohoStatus(true)
+      const res = await api.get('/integrations/zoho/status')
+      setZohoStatus(res.data)
+    } catch (error) {
+      console.error("Failed to load Zoho status", error)
+    } finally {
+      setIsLoadingZohoStatus(false)
+    }
+  }
 
   useEffect(() => {
     fetchAccounts()
+    loadZohoStatus()
+
+    // Check for zoho_connected in URL
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('zoho_connected') === 'true') {
+      setSuccessMsg("Zoho CRM connected successfully!")
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
   }, [fetchAccounts])
 
   const handleConnectWhatsApp = async () => {
     setErrorMsg("")
+    setSuccessMsg("")
     setIsConnecting(true)
     try {
       // 1. Launch FB SDK
@@ -37,6 +61,7 @@ export default function Settings() {
   const handleConnectZoho = async () => {
     setIsConnectingZoho(true)
     setErrorMsg("")
+    setSuccessMsg("")
     try {
       const response = await api.get('/integrations/zoho/connect')
       if (response.data?.authUrl) {
@@ -56,12 +81,32 @@ export default function Settings() {
     alert(`Disconnect feature for account ${accountId} coming soon!`);
   }
 
+  const handleDisconnectZoho = async () => {
+    if (!window.confirm("Are you sure you want to disconnect Zoho CRM?")) return;
+    try {
+      await api.delete('/integrations/zoho/disconnect')
+      setSuccessMsg("Zoho CRM disconnected successfully!")
+      loadZohoStatus()
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || err.message || "Failed to disconnect Zoho CRM.")
+    }
+  }
+
   return (
     <div className="max-w-3xl">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-slate-800 tracking-tight">Settings</h1>
         <p className="text-slate-500 mt-1 text-sm">Manage your company integrations and WhatsApp numbers.</p>
       </div>
+
+      {successMsg && (
+        <div className="p-4 mb-4 bg-emerald-50 text-emerald-700 text-sm border border-emerald-100 rounded-lg flex items-center justify-between">
+          <span>{successMsg}</span>
+          <button onClick={() => setSuccessMsg("")} className="text-emerald-700 hover:text-emerald-900">
+            <XCircle size={16} />
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -157,17 +202,64 @@ export default function Settings() {
             <h2 className="text-lg font-semibold text-slate-900">Zoho CRM Integration</h2>
             <p className="text-sm text-slate-500">Connect your Zoho CRM to sync leads and conversations.</p>
           </div>
-          <button 
-            className="flex items-center gap-2 px-4 py-2 bg-[#0056b3] text-white font-medium rounded-lg hover:bg-[#004494] transition-colors shadow-sm disabled:opacity-70"
-            onClick={handleConnectZoho}
-            disabled={isConnectingZoho}
-          >
-            {isConnectingZoho ? <Loader2 className="animate-spin" size={18} /> : null}
-            {isConnectingZoho ? "Connecting..." : "Connect Zoho"}
-          </button>
+          
+          {isLoadingZohoStatus ? (
+            <div className="h-10 w-32 bg-slate-100 animate-pulse rounded-lg"></div>
+          ) : zohoStatus?.connected ? (
+            <button 
+              onClick={handleDisconnectZoho}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <PowerOff size={18} className="text-red-500" />
+              Disconnect
+            </button>
+          ) : (
+            <button 
+              className="flex items-center gap-2 px-4 py-2 bg-[#0056b3] text-white font-medium rounded-lg hover:bg-[#004494] transition-colors shadow-sm disabled:opacity-70"
+              onClick={handleConnectZoho}
+              disabled={isConnectingZoho}
+            >
+              {isConnectingZoho ? <Loader2 className="animate-spin" size={18} /> : null}
+              {isConnectingZoho ? "Connecting..." : "Connect Zoho"}
+            </button>
+          )}
         </div>
-        <div className="p-6 text-center text-slate-500">
-          No Zoho account connected yet. Click the button above to connect.
+        
+        <div className="p-6">
+          {isLoadingZohoStatus ? (
+            <div className="flex items-center gap-4 animate-pulse">
+              <div className="h-12 w-12 bg-slate-100 rounded-full"></div>
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-slate-100 rounded w-1/4"></div>
+                <div className="h-3 bg-slate-100 rounded w-1/3"></div>
+              </div>
+            </div>
+          ) : zohoStatus?.connected ? (
+            <div className="flex items-center justify-between bg-slate-50 rounded-xl p-4 border border-slate-100">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">
+                  Z
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 text-lg flex items-center gap-2">
+                    Zoho CRM
+                    <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200">
+                      <CheckCircle2 size={12} /> Connected
+                    </span>
+                  </h3>
+                  <div className="text-slate-500 text-sm mt-1 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
+                    <p>Account Name: <span className="font-medium text-slate-700">{zohoStatus.accountName || 'Unknown Org'}</span></p>
+                    <p>Connected On: <span className="font-medium text-slate-700">{new Date(zohoStatus.connectedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span></p>
+                    <p className="col-span-1 sm:col-span-2 text-xs text-slate-400">Org ID: {zohoStatus.organizationId || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-slate-500 py-4">
+              No Zoho account connected yet. Click the button above to connect.
+            </div>
+          )}
         </div>
       </div>
 

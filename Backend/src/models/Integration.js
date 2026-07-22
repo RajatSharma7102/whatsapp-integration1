@@ -24,6 +24,9 @@ const integrationSchema = new mongoose.Schema(
     organizationId: {
       type: String,
     },
+    accountName: {
+      type: String,
+    },
     connected: {
       type: Boolean,
       default: true,

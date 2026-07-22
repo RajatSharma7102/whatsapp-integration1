@@ -11,8 +11,9 @@ router.get('/connect', protect, tenantMiddleware, zohoController.oauthConnect);
 router.get('/callback', zohoController.oauthCallback);
 
 // Integration status & sync
-router.get('/status', zohoController.getStatus);
-router.post('/sync', zohoController.syncData);
+router.get('/status', protect, tenantMiddleware, zohoController.getStatus);
+router.post('/sync', protect, tenantMiddleware, zohoController.syncData);
+router.delete('/disconnect', protect, tenantMiddleware, zohoController.disconnect);
 
 // Webhook route
 router.post('/webhook', zohoWebhook.handleWebhook);

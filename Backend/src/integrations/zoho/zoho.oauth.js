@@ -5,7 +5,7 @@ const connect = async (req, res) => {
     try {
         const clientId = process.env.ZOHO_CLIENT_ID;
         const redirectUri = process.env.ZOHO_REDIRECT_URI;
-        const scope = 'ZohoCRM.modules.ALL'; // Adjust scopes as needed
+        const scope = 'ZohoCRM.modules.ALL,ZohoCRM.org.ALL,ZohoCRM.users.ALL,ZohoCRM.settings.ALL'; // Adjust scopes as needed
         if (!req.user || !req.user.companyId) {
             return res.status(401).json({ message: 'User company not found' });
         }
@@ -65,12 +65,39 @@ const callback = async (req, res) => {
             const expiresAt = new Date();
             expiresAt.setSeconds(expiresAt.getSeconds() + expires_in);
             
+            // Try to fetch organization details
+            let organizationId = "Unknown";
+            let accountName = "Unknown Org";
+            
+            try {
+                // Infer API domain from accountsUrl (e.g. https://accounts.zoho.in -> https://www.zohoapis.in)
+                const apiDomain = accountsUrl.replace('accounts.zoho', 'www.zohoapis');
+                const orgResponse = await axios.get(`${apiDomain}/crm/v3/org`, {
+                    headers: {
+                        Authorization: `Zoho-oauthtoken ${access_token}`
+                    }
+                });
+                
+                if (orgResponse.data && orgResponse.data.org && orgResponse.data.org.length > 0) {
+                    const orgData = orgResponse.data.org[0];
+                    organizationId = orgData.zgid || orgData.id || "Unknown";
+                    accountName = orgData.company_name || "Unknown Org";
+                }
+            } catch (orgError) {
+                console.error("\n========== ZOHO ORG FETCH ERROR ==========");
+                console.error("Failed to fetch Zoho org details:", orgError.response ? JSON.stringify(orgError.response.data, null, 2) : orgError.message);
+                console.error("==========================================\n");
+                // Non-fatal error, we still save the integration
+            }
+            
             await zohoService.createOrUpdateIntegration({
                 companyId,
                 provider: 'zoho',
                 accessToken: access_token,
                 refreshToken: refresh_token,
                 expiresAt,
+                organizationId,
+                accountName,
                 connected: true
             });
             
