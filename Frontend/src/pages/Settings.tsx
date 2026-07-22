@@ -3,10 +3,12 @@ import { useWhatsAppStore } from "@/store/whatsappStore"
 import { launchWhatsAppSignup } from "@/lib/facebookSdk"
 import { Phone, CheckCircle2, XCircle, Loader2, Star, MessageSquare, PowerOff } from "lucide-react"
 import { TeamsSection } from "@/components/TeamsSection"
+import api from "@/lib/api"
 
 export default function Settings() {
   const { accounts, isLoading, fetchAccounts, connectAccount } = useWhatsAppStore()
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isConnectingZoho, setIsConnectingZoho] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
 
   useEffect(() => {
@@ -29,6 +31,23 @@ export default function Settings() {
       setErrorMsg(err.message || "Failed to connect WhatsApp account.")
     } finally {
       setIsConnecting(false)
+    }
+  }
+
+  const handleConnectZoho = async () => {
+    setIsConnectingZoho(true)
+    setErrorMsg("")
+    try {
+      const response = await api.get('/integrations/zoho/connect')
+      if (response.data?.authUrl) {
+        window.location.href = response.data.authUrl
+      } else {
+        setErrorMsg("Failed to retrieve Zoho authorization URL.")
+      }
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || err.message || "Failed to initiate Zoho connection.")
+    } finally {
+      setIsConnectingZoho(false)
     }
   }
 
@@ -131,8 +150,31 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Zoho Integration Section */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
+        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Zoho CRM Integration</h2>
+            <p className="text-sm text-slate-500">Connect your Zoho CRM to sync leads and conversations.</p>
+          </div>
+          <button 
+            className="flex items-center gap-2 px-4 py-2 bg-[#0056b3] text-white font-medium rounded-lg hover:bg-[#004494] transition-colors shadow-sm disabled:opacity-70"
+            onClick={handleConnectZoho}
+            disabled={isConnectingZoho}
+          >
+            {isConnectingZoho ? <Loader2 className="animate-spin" size={18} /> : null}
+            {isConnectingZoho ? "Connecting..." : "Connect Zoho"}
+          </button>
+        </div>
+        <div className="p-6 text-center text-slate-500">
+          No Zoho account connected yet. Click the button above to connect.
+        </div>
+      </div>
+
       {/* Teams Section */}
-      <TeamsSection />
+      <div className="mt-6">
+        <TeamsSection />
+      </div>
     </div>
   )
 }

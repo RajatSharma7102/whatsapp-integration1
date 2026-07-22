@@ -1,0 +1,101 @@
+const axios = require('axios');
+const zohoService = require('./zoho.service');
+
+const connect = async (req, res) => {
+    try {
+        const clientId = process.env.ZOHO_CLIENT_ID;
+        const redirectUri = process.env.ZOHO_REDIRECT_URI;
+        const scope = 'ZohoCRM.modules.ALL'; // Adjust scopes as needed
+        if (!req.user || !req.user.companyId) {
+            return res.status(401).json({ message: 'User company not found' });
+        }
+        
+        const state = req.user.companyId.toString();
+        
+        console.log("========== ZOHO CONNECT ==========");
+        console.log("req.user:", req.user);
+        console.log("companyId:", req.user.companyId);
+        console.log("state:", state);
+        console.log("==================================");
+        
+        const authUrl = `https://accounts.zoho.in/oauth/v2/auth?scope=${scope}&client_id=${clientId}&response_type=code&access_type=offline&redirect_uri=${redirectUri}&state=${state}`;
+        
+        res.status(200).json({ authUrl });
+    } catch (error) {
+        console.error('Zoho connect error:', error);
+        res.status(500).json({ message: 'Failed to initiate Zoho connection' });
+    }
+};
+
+const callback = async (req, res) => {
+    try {
+        const { code, state, location } = req.query;
+        
+        if (!code) {
+            return res.status(400).json({ message: 'Authorization code is missing' });
+        }
+        
+        const clientId = process.env.ZOHO_CLIENT_ID;
+        const clientSecret = process.env.ZOHO_CLIENT_SECRET;
+        const redirectUri = process.env.ZOHO_REDIRECT_URI;
+        
+        // Exchange code for tokens
+        // Note: The accounts URL might depend on the DC (e.g., .in, .com, .eu). We'll use the one from accounts-server if available or fallback to .in
+        const accountsUrl = req.query['accounts-server'] || 'https://accounts.zoho.in';
+        
+        const tokenResponse = await axios.post(`${accountsUrl}/oauth/v2/token`, null, {
+            params: {
+                grant_type: 'authorization_code',
+                client_id: clientId,
+                client_secret: clientSecret,
+                redirect_uri: redirectUri,
+                code: code
+            }
+        });
+        
+        const { access_token, refresh_token, expires_in } = tokenResponse.data;
+        
+        if (access_token) {
+            // Save to DB
+            if (!state || state === 'undefined') {
+                throw new Error("Missing companyId in state parameter");
+            }
+            const companyId = state;
+            
+            const expiresAt = new Date();
+            expiresAt.setSeconds(expiresAt.getSeconds() + expires_in);
+            
+            await zohoService.createOrUpdateIntegration({
+                companyId,
+                provider: 'zoho',
+                accessToken: access_token,
+                refreshToken: refresh_token,
+                expiresAt,
+                connected: true
+            });
+            
+            // Redirect back to frontend settings page
+            const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+            res.redirect(`${frontendUrl}/settings?zoho_connected=true`);
+        } else {
+            res.status(400).json({ message: 'Failed to obtain access token', details: tokenResponse.data });
+        }
+    } catch (error) {
+        const errorDetails = error.response ? error.response.data : error.message;
+        console.error('\n================ ZOHO OAUTH ERROR ================');
+        console.error('Error Details:', JSON.stringify(errorDetails, null, 2));
+        console.error('Request Query:', JSON.stringify(req.query, null, 2));
+        console.error('==================================================\n');
+        
+        res.status(500).json({ 
+            message: 'Failed to process Zoho callback', 
+            error: errorDetails,
+            query: req.query
+        });
+    }
+};
+
+module.exports = {
+    connect,
+    callback
+};
