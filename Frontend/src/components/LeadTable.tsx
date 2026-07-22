@@ -12,10 +12,11 @@ import { useLeadStore } from "@/store/leadStore"
 interface LeadTableProps {
   leads: Lead[]
   onOpenChat: (lead: Lead) => void
+  onOpenEmail?: (lead: Lead) => void
   onLeadUpdate?: (id: string, updates: Partial<Lead>) => void
 }
 
-export function LeadTable({ leads, onOpenChat, onLeadUpdate }: LeadTableProps) {
+export function LeadTable({ leads, onOpenChat, onOpenEmail, onLeadUpdate }: LeadTableProps) {
   const [search, setSearch] = useState("")
   const { setFilters } = useLeadStore()
 
@@ -67,7 +68,7 @@ export function LeadTable({ leads, onOpenChat, onLeadUpdate }: LeadTableProps) {
               </TableRow>
             ) : (
               leads.map((lead) => (
-                <LeadRow key={lead._id} lead={lead} onOpenChat={onOpenChat} onLeadUpdate={onLeadUpdate} />
+                <LeadRow key={lead._id} lead={lead} onOpenChat={onOpenChat} onOpenEmail={onOpenEmail} onLeadUpdate={onLeadUpdate} />
               ))
             )}
           </TableBody>

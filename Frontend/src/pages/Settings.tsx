@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useWhatsAppStore } from "@/store/whatsappStore"
 import { launchWhatsAppSignup } from "@/lib/facebookSdk"
-import { Phone, CheckCircle2, XCircle, Loader2, Star, MessageSquare, PowerOff } from "lucide-react"
+import { Phone, CheckCircle2, XCircle, Loader2, Star, MessageSquare, PowerOff, Mail, Plus } from "lucide-react"
 import { TeamsSection } from "@/components/TeamsSection"
 import api from "@/lib/api"
 
@@ -13,6 +13,28 @@ export default function Settings() {
   const [successMsg, setSuccessMsg] = useState("")
   const [zohoStatus, setZohoStatus] = useState<any>(null)
   const [isLoadingZohoStatus, setIsLoadingZohoStatus] = useState(true)
+
+  const [isConnectingEmail, setIsConnectingEmail] = useState(false)
+  const [isEmailMenuOpen, setIsEmailMenuOpen] = useState(false)
+  const [connectedEmails, setConnectedEmails] = useState<any[]>([])
+  
+  const [showSmtpModal, setShowSmtpModal] = useState(false)
+  const [smtpForm, setSmtpForm] = useState({
+    email: '',
+    smtpHost: '',
+    smtpPort: '',
+    smtpUsername: '',
+    smtpPassword: ''
+  })
+
+  const loadEmailAccounts = async () => {
+    try {
+      const res = await api.get('/email/accounts')
+      setConnectedEmails(res.data.data || [])
+    } catch (error) {
+      console.error("Failed to load email accounts", error)
+    }
+  }
 
   const loadZohoStatus = async () => {
     try {
@@ -29,12 +51,24 @@ export default function Settings() {
   useEffect(() => {
     fetchAccounts()
     loadZohoStatus()
+    loadEmailAccounts()
 
-    // Check for zoho_connected in URL
     const urlParams = new URLSearchParams(window.location.search)
+    
+    // Check for zoho_connected in URL
     if (urlParams.get('zoho_connected') === 'true') {
       setSuccessMsg("Zoho CRM connected successfully!")
-      window.history.replaceState({}, document.title, window.location.pathname)
+      urlParams.delete('zoho_connected')
+      const newUrl = urlParams.toString() ? `${window.location.pathname}?${urlParams.toString()}` : window.location.pathname
+      window.history.replaceState({}, document.title, newUrl)
+    }
+
+    // Check for email_connected in URL
+    if (urlParams.get('email_connected') === 'true') {
+      setSuccessMsg("Email Account connected successfully!")
+      urlParams.delete('email_connected')
+      const newUrl = urlParams.toString() ? `${window.location.pathname}?${urlParams.toString()}` : window.location.pathname
+      window.history.replaceState({}, document.title, newUrl)
     }
   }, [fetchAccounts])
 
@@ -89,6 +123,70 @@ export default function Settings() {
       loadZohoStatus()
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || err.message || "Failed to disconnect Zoho CRM.")
+    }
+  }
+
+  const handleConnectEmail = async (provider: string) => {
+    if (provider === 'SMTP') {
+      setShowSmtpModal(true)
+      setIsEmailMenuOpen(false)
+      return
+    }
+    
+    if (provider === 'Gmail') {
+      setIsConnectingEmail(true)
+      setErrorMsg("")
+      try {
+        const response = await api.get('/email/connect/gmail')
+        if (response.data?.authUrl) {
+          window.location.href = response.data.authUrl
+        } else {
+          setErrorMsg("Failed to retrieve Google authorization URL.")
+          setIsConnectingEmail(false)
+        }
+      } catch (err: any) {
+        setErrorMsg(err.response?.data?.message || err.message || "Failed to initiate Gmail connection.")
+        setIsConnectingEmail(false)
+      }
+      setIsEmailMenuOpen(false)
+      return
+    }
+
+    // Stub for other OAuth providers
+    setIsConnectingEmail(true)
+    setTimeout(() => {
+      alert(`${provider} integration coming soon!`)
+      setIsConnectingEmail(false)
+      setIsEmailMenuOpen(false)
+    }, 500)
+  }
+
+  const handleSmtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsConnectingEmail(true)
+    setErrorMsg("")
+    setSuccessMsg("")
+    try {
+      await api.post('/email/connect/smtp', smtpForm)
+      setSuccessMsg("SMTP account connected successfully!")
+      setShowSmtpModal(false)
+      setSmtpForm({ email: '', smtpHost: '', smtpPort: '', smtpUsername: '', smtpPassword: '' })
+      loadEmailAccounts()
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || "Failed to connect SMTP account")
+    } finally {
+      setIsConnectingEmail(false)
+    }
+  }
+
+  const handleDisconnectEmail = async (id: string) => {
+    if (!window.confirm("Are you sure you want to disconnect this email account?")) return;
+    try {
+      await api.delete(`/email/account/${id}`)
+      setSuccessMsg("Email disconnected successfully!")
+      loadEmailAccounts()
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || "Failed to disconnect Email account")
     }
   }
 
@@ -262,6 +360,135 @@ export default function Settings() {
           )}
         </div>
       </div>
+
+      {/* Email Integration Section */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
+        <div className="p-6 border-b border-slate-100">
+          <h2 className="text-lg font-semibold text-slate-900">Email Integration</h2>
+          <p className="text-sm text-slate-500">Connect your email accounts to sync communications.</p>
+        </div>
+        
+        <div className="p-6">
+          <div className="mb-8">
+            <h3 className="text-md font-semibold text-slate-800 mb-4">Email Accounts</h3>
+            
+            <div className="relative inline-block">
+              <button 
+                onClick={() => setIsEmailMenuOpen(!isEmailMenuOpen)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                <Plus size={18} />
+                Connect Email
+              </button>
+              
+              {isEmailMenuOpen && (
+                <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden z-10">
+                  <button onClick={() => handleConnectEmail('Gmail')} className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 text-slate-700 font-medium">
+                    Gmail
+                  </button>
+                  <button onClick={() => handleConnectEmail('Outlook')} className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 text-slate-700 font-medium">
+                    Outlook
+                  </button>
+                  <button onClick={() => handleConnectEmail('SMTP')} className="w-full text-left px-4 py-3 hover:bg-slate-50 text-slate-700 font-medium">
+                    SMTP
+                  </button>
+                </div>
+              )}
+            </div>
+            {isConnectingEmail && <p className="text-sm text-slate-500 mt-3 flex items-center gap-2"><Loader2 className="animate-spin" size={14}/> Connecting...</p>}
+          </div>
+
+          <div>
+            <h3 className="text-md font-semibold text-slate-800 mb-4">Connected Accounts</h3>
+            {connectedEmails.length === 0 ? (
+              <p className="text-sm text-slate-500 bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">No email accounts connected.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
+                {connectedEmails.map(account => (
+                  <li key={account._id} className="p-4 bg-slate-50 hover:bg-slate-100 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start sm:items-center gap-4">
+                      <div className="h-10 w-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm shrink-0">
+                        <Mail size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-slate-900 flex items-center gap-2 text-base">
+                          {account.email}
+                          {account.isDefault && (
+                            <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full font-medium">Default</span>
+                          )}
+                        </h4>
+                        <div className="text-slate-500 text-sm mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <span>Provider : <span className="font-medium text-slate-700 capitalize">{account.provider}</span></span>
+                          <span className="flex items-center gap-1">
+                            Status : <span className="text-emerald-600 font-medium flex items-center gap-1 capitalize"><CheckCircle2 size={14} /> {account.status}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDisconnectEmail(account._id)}
+                      className="text-slate-400 hover:text-red-500 transition-colors shrink-0 self-end sm:self-auto" 
+                      title="Disconnect"
+                    >
+                      <PowerOff size={18} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* SMTP Modal */}
+      {showSmtpModal && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-800">Connect SMTP Account</h3>
+              <button onClick={() => setShowSmtpModal(false)} className="text-slate-400 hover:text-slate-600">
+                <XCircle size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSmtpSubmit} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <input type="email" required placeholder="sales@marketingbugs.in" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    value={smtpForm.email} onChange={e => setSmtpForm({...smtpForm, email: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">SMTP Host</label>
+                  <input type="text" required placeholder="smtp.hostinger.com" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={smtpForm.smtpHost} onChange={e => setSmtpForm({...smtpForm, smtpHost: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">SMTP Port</label>
+                  <input type="number" required placeholder="465" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={smtpForm.smtpPort} onChange={e => setSmtpForm({...smtpForm, smtpPort: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                  <input type="text" required placeholder="sales@marketingbugs.in" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={smtpForm.smtpUsername} onChange={e => setSmtpForm({...smtpForm, smtpUsername: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                  <input type="password" required placeholder="••••••••" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={smtpForm.smtpPassword} onChange={e => setSmtpForm({...smtpForm, smtpPassword: e.target.value})} />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowSmtpModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 font-medium rounded-lg transition-colors">Cancel</button>
+                <button type="submit" disabled={isConnectingEmail} className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-70">
+                  {isConnectingEmail ? <Loader2 size={16} className="animate-spin" /> : null}
+                  Test & Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Teams Section */}
       <div className="mt-6">

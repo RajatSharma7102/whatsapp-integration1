@@ -15,6 +15,7 @@ const webhookRoutes = require('./src/routes/webhookRoutes');
 const companyRoutes = require('./src/routes/companyRoutes');
 const teamRoutes = require('./src/routes/teamRoutes');
 const zohoRoutes = require('./src/integrations/zoho/zoho.routes');
+const emailRoutes = require('./src/routes/emailRoutes');
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/integrations/zoho', zohoRoutes);
+app.use('/api/email', emailRoutes);
 
 // 404 handler
 app.use(notFound);

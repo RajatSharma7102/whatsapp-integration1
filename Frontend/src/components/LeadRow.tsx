@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent,
   DropdownMenuSubTrigger, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2, Users, X, MessageCircle, Phone } from "lucide-react"
+import { MoreHorizontal, Eye, Edit, Trash2, Users, X, MessageCircle, Phone, Mail } from "lucide-react"
 import { WhatsAppButton } from "@/components/WhatsAppButton"
 import { Lead } from "@/types"
 import { useTeamStore } from "@/store/teamStore"
@@ -17,6 +17,7 @@ import { leadService } from "@/services/lead.service"
 interface LeadRowProps {
   lead: Lead
   onOpenChat: (lead: Lead) => void
+  onOpenEmail?: (lead: Lead) => void
   onLeadUpdate?: (id: string, updates: Partial<Lead>) => void
 }
 
@@ -44,7 +45,7 @@ const sourceConfig: Record<string, { label: string; color: string; bg: string }>
   Manual:    { label: "Manual",    color: "text-slate-600", bg: "bg-slate-50" },
 }
 
-export function LeadRow({ lead, onOpenChat, onLeadUpdate }: LeadRowProps) {
+export function LeadRow({ lead, onOpenChat, onOpenEmail, onLeadUpdate }: LeadRowProps) {
   const { teams, fetchTeams } = useTeamStore()
   const status = statusConfig[lead.status] || { label: lead.status, className: "bg-slate-100 text-slate-600 border-slate-200" }
   const source = sourceConfig[lead.source] ?? { label: lead.source, color: "text-slate-600", bg: "bg-slate-50" }
@@ -131,6 +132,17 @@ export function LeadRow({ lead, onOpenChat, onLeadUpdate }: LeadRowProps) {
       {/* Actions */}
       <TableCell className="py-3 pr-5 text-right">
         <div className="flex items-center justify-end gap-1 transition-opacity">
+          {lead.email && (
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => onOpenEmail?.(lead)}
+              className="h-7 w-7 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg shrink-0 transition-colors"
+              title="Send Email"
+            >
+              <Mail className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <WhatsAppButton lead={lead} onClick={() => onOpenChat(lead)} />
 
           <DropdownMenu>
