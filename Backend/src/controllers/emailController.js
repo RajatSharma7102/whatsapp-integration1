@@ -28,7 +28,7 @@ exports.connectGmail = async (req, res, next) => {
   try {
     const oauth2Client = getGoogleOAuthClient();
     const scopes = [
-      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.send',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile'
     ];
@@ -36,12 +36,17 @@ exports.connectGmail = async (req, res, next) => {
     // Pass user ID in state to link account in callback
     const state = req.user._id.toString();
 
+    console.log("SCOPES BEING SENT:", scopes);
+
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
+      prompt: 'consent',
+      include_granted_scopes: false,
       scope: scopes,
-      state: state,
-      prompt: 'consent'
+      state: state
     });
+
+    console.log("AUTH URL:", authUrl);
 
     res.status(200).json({ success: true, authUrl });
   } catch (error) {
@@ -61,7 +66,15 @@ exports.googleCallback = async (req, res, next) => {
 
     const oauth2Client = getGoogleOAuthClient();
     const { tokens } = await oauth2Client.getToken(code);
+    console.log("TOKENS:", tokens);
     oauth2Client.setCredentials(tokens);
+
+    try {
+      const tokenInfo = await oauth2Client.getTokenInfo(tokens.access_token);
+      console.log("TOKEN INFO:", tokenInfo);
+    } catch (infoErr) {
+      console.error("Could not fetch token info:", infoErr);
+    }
 
     // Get user email
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
@@ -184,23 +197,53 @@ exports.sendEmail = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'No connected email account found. Please connect an email in Settings.' });
     }
 
-    const nodemailer = require('nodemailer');
-    let transporter;
-
     if (account.provider === 'gmail') {
-      transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          type: 'OAuth2',
-          user: account.email,
-          clientId: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          refreshToken: account.refreshToken,
-          accessToken: account.accessToken
-        }
+      const oauth2Client = getGoogleOAuthClient();
+      oauth2Client.setCredentials({
+        access_token: account.accessToken,
+        refresh_token: account.refreshToken,
       });
+
+      try {
+        const accessToken = await oauth2Client.getAccessToken();
+        console.log("CURRENT ACCESS TOKEN:", accessToken);
+
+        const tokenInfo = await oauth2Client.getTokenInfo(account.accessToken);
+        console.log("TOKEN INFO FROM DB:", tokenInfo);
+      } catch (err) {
+        console.error("Token log error:", err);
+      }
+
+      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+      
+      const str = [
+        `To: ${to}`,
+        `From: ${account.email}`,
+        `Subject: =?utf-8?B?${Buffer.from(subject).toString('base64')}?=`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        html || text
+      ].join('\r\n');
+      
+      const encodedMessage = Buffer.from(str)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+      const resGmail = await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: encodedMessage,
+        },
+      });
+
+      return res.status(200).json({ success: true, message: 'Email sent successfully', messageId: resGmail.data.id });
+      
     } else if (account.provider === 'smtp') {
-      transporter = nodemailer.createTransport({
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
         host: account.smtpHost,
         port: account.smtpPort,
         secure: account.smtpPort === 465,
@@ -209,21 +252,21 @@ exports.sendEmail = async (req, res, next) => {
           pass: account.smtpPassword,
         },
       });
+      
+      const info = await transporter.sendMail({
+        from: account.email,
+        to,
+        subject,
+        text: text || '',
+        html: html || text,
+      });
+
+      return res.status(200).json({ success: true, message: 'Email sent successfully', messageId: info.messageId });
     } else {
       return res.status(400).json({ success: false, message: `Sending email via ${account.provider} is not supported yet.` });
     }
-
-    // Send the email
-    const info = await transporter.sendMail({
-      from: account.email,
-      to,
-      subject,
-      text: text || '',
-      html: html || text,
-    });
-
-    res.status(200).json({ success: true, message: 'Email sent successfully', messageId: info.messageId });
   } catch (error) {
+    console.error("Email send error:", error);
     next(error);
   }
 };
