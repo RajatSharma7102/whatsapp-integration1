@@ -3,6 +3,8 @@ const logger = require('../config/logger');
 const Lead = require('../models/Lead');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const EmailAccount = require('../models/EmailAccount');
+const { syncGmailThreads } = require('../services/gmailSyncService');
 
 /**
  * Daily: Log stats
@@ -38,7 +40,22 @@ const closeStaleConversationsJob = cron.schedule('0 */6 * * *', async () => {
   }
 }, { scheduled: false });
 
+/**
+ * Every 2 minutes: Sync emails for all connected accounts
+ */
+const syncEmailsJob = cron.schedule('*/2 * * * *', async () => {
+  try {
+    const accounts = await EmailAccount.find({ provider: 'gmail', status: 'Connected' });
+    for (const acc of accounts) {
+      await syncGmailThreads(acc._id).catch(err => logger.error(`Email sync failed for ${acc.email}`, err.message));
+    }
+  } catch (err) {
+    logger.error('Email sync cron job failed', err.message);
+  }
+}, { scheduled: false });
+
 const startAllJobs = () => {
+  syncEmailsJob.start();
   if (process.env.NODE_ENV === 'production') {
     dailyStatsJob.start();
     closeStaleConversationsJob.start();

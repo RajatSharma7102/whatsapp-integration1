@@ -1,5 +1,8 @@
 const EmailAccount = require('../models/EmailAccount');
+const EmailConversation = require('../models/EmailConversation');
+const EmailMessage = require('../models/EmailMessage');
 const { google } = require('googleapis');
+const { syncGmailThreads } = require('../services/gmailSyncService');
 
 const getGoogleOAuthClient = () => {
   return new google.auth.OAuth2(
@@ -29,6 +32,8 @@ exports.connectGmail = async (req, res, next) => {
     const oauth2Client = getGoogleOAuthClient();
     const scopes = [
       'https://www.googleapis.com/auth/gmail.send',
+      "https://www.googleapis.com/auth/gmail.readonly",
+      'https://www.googleapis.com/auth/gmail.modify',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile'
     ];
@@ -185,7 +190,7 @@ exports.deleteAccount = async (req, res, next) => {
 // @access  Private
 exports.sendEmail = async (req, res, next) => {
   try {
-    const { to, subject, text, html } = req.body;
+    const { to, subject, text, html, threadId, conversationId } = req.body;
     if (!to || !subject) {
       return res.status(400).json({ success: false, message: 'Please provide recipient (to) and subject' });
     }
@@ -236,10 +241,44 @@ exports.sendEmail = async (req, res, next) => {
         userId: 'me',
         requestBody: {
           raw: encodedMessage,
+          threadId: threadId || undefined
         },
       });
 
-      return res.status(200).json({ success: true, message: 'Email sent successfully', messageId: resGmail.data.id });
+      // Save to database
+      let convId = conversationId;
+      if (!convId && resGmail.data.threadId) {
+        let conv = await EmailConversation.findOne({ threadId: resGmail.data.threadId });
+        if (!conv) {
+          conv = await EmailConversation.create({
+            threadId: resGmail.data.threadId,
+            userId: account.userId,
+            subject,
+            participants: [account.email, to],
+            lastMessageSnippet: (text || html || '').substring(0, 100),
+            lastMessageAt: new Date(),
+          });
+        }
+        convId = conv._id;
+      }
+
+      if (convId) {
+        await EmailMessage.create({
+          conversationId: convId,
+          threadId: resGmail.data.threadId || threadId,
+          gmailMessageId: resGmail.data.id,
+          sender: account.email,
+          recipients: [to],
+          subject,
+          htmlBody: html || text,
+          plainBody: text || '',
+          direction: 'outgoing',
+          status: 'Sent',
+          sentAt: new Date()
+        });
+      }
+
+      return res.status(200).json({ success: true, message: 'Email sent successfully', messageId: resGmail.data.id, threadId: resGmail.data.threadId });
       
     } else if (account.provider === 'smtp') {
       const nodemailer = require('nodemailer');
@@ -267,6 +306,82 @@ exports.sendEmail = async (req, res, next) => {
     }
   } catch (error) {
     console.error("Email send error:", error);
+    next(error);
+  }
+};
+
+// @desc    Get paginated email conversations
+// @route   GET /api/email/conversations
+// @access  Private
+exports.getConversations = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const cursor = req.query.cursor; // timestamp cursor
+    const email = req.query.email;
+    
+    let query = { userId: req.user._id };
+    if (email) {
+      query.participants = { $in: [new RegExp(email, 'i')] };
+    }
+    
+    if (cursor) {
+      query.lastMessageAt = { $lt: new Date(cursor) };
+    }
+
+    const conversations = await EmailConversation.find(query)
+      .sort({ lastMessageAt: -1 })
+      .limit(limit);
+
+    const nextCursor = conversations.length === limit ? conversations[conversations.length - 1].lastMessageAt : null;
+
+    res.status(200).json({ success: true, data: conversations, nextCursor });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Sync Gmail Threads
+// @route   POST /api/email/sync
+// @access  Private
+exports.syncEmails = async (req, res, next) => {
+  try {
+    const account = await EmailAccount.findOne({ userId: req.user._id, status: 'Connected' });
+    if (!account || account.provider !== 'gmail') {
+      return res.status(400).json({ success: false, message: 'No connected Gmail account found' });
+    }
+
+    // Run sync in background so we don't block response
+    syncGmailThreads(account._id).catch(err => console.error(err));
+
+    res.status(200).json({ success: true, message: 'Sync started' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get paginated messages for a conversation
+// @route   GET /api/email/conversations/:threadId/messages
+// @access  Private
+exports.getMessages = async (req, res, next) => {
+  try {
+    const { threadId } = req.params;
+    const limit = parseInt(req.query.limit) || 20;
+    const cursor = req.query.cursor; // timestamp cursor
+    
+    let query = { threadId };
+    if (cursor) {
+      query.sentAt = { $lt: new Date(cursor) };
+    }
+
+    // Find messages backwards (newest first for pagination, then we will reverse on frontend)
+    const messages = await EmailMessage.find(query)
+      .sort({ sentAt: -1 })
+      .limit(limit);
+
+    const nextCursor = messages.length === limit ? messages[messages.length - 1].sentAt : null;
+
+    res.status(200).json({ success: true, data: messages, nextCursor });
+  } catch (error) {
     next(error);
   }
 };

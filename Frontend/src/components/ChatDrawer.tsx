@@ -9,6 +9,7 @@ import { conversationService } from "@/services/conversation.service"
 import { useConversationStore } from "@/store/conversationStore"
 import { useTeamStore } from "@/store/teamStore"
 import { leadService } from "@/services/lead.service"
+import { EmailModule } from "./EmailModule"
 
 interface ChatDrawerProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ export function ChatDrawer({ isOpen, onClose, lead, onLeadUpdate }: ChatDrawerPr
   const [inputText, setInputText] = useState("")
   const [showTeamMenu, setShowTeamMenu] = useState(false)
   const [assigningTeam, setAssigningTeam] = useState(false)
+  const [activeTab, setActiveTab] = useState<'whatsapp' | 'email'>('whatsapp')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -281,9 +283,26 @@ export function ChatDrawer({ isOpen, onClose, lead, onLeadUpdate }: ChatDrawerPr
                 </div>
             </div>
 
+            {/* ── Tabs ── */}
+            <div className="flex border-b border-slate-200 bg-slate-50 shrink-0">
+              <button
+                onClick={() => setActiveTab('whatsapp')}
+                className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'whatsapp' ? 'text-emerald-600 border-b-2 border-emerald-500 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                WhatsApp
+              </button>
+              <button
+                onClick={() => setActiveTab('email')}
+                className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'email' ? 'text-violet-600 border-b-2 border-violet-500 bg-white' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Email
+              </button>
+            </div>
 
-            {/* ── Messages ── */}
-            <div className="flex-1 overflow-y-auto bg-[#ECE5DD]/30 p-4">
+            {/* ── WhatsApp View ── */}
+            {activeTab === 'whatsapp' && (
+              <>
+                <div className="flex-1 overflow-y-auto bg-[#ECE5DD]/30 p-4">
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
@@ -361,8 +380,17 @@ export function ChatDrawer({ isOpen, onClose, lead, onLeadUpdate }: ChatDrawerPr
                     <Send className="h-4 w-4 ml-[-1px]" />
                   )}
                 </Button>
+                </div>
               </div>
-            </div>
+            </>
+            )}
+
+            {/* ── Email View ── */}
+            {activeTab === 'email' && (
+              <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
+                <EmailModule lead={lead} />
+              </div>
+            )}
           </motion.div>
         </>
       )}

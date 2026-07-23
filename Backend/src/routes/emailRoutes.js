@@ -6,7 +6,10 @@ const {
   connectOutlook,
   connectSmtp,
   deleteAccount,
-  sendEmail
+  sendEmail,
+  syncEmails,
+  getConversations,
+  getMessages
 } = require('../controllers/emailController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -19,6 +22,10 @@ router.get('/google/callback', googleCallback);
 router.use(protect); // All other email routes require authentication
 
 router.get('/accounts', getAccounts);
+router.post('/sync', syncEmails);
+router.get('/conversations', getConversations);
+router.get('/conversations/:threadId/messages', getMessages);
+
 router.get('/connect/gmail', connectGmail);
 router.post('/connect/outlook', connectOutlook);
 router.post('/connect/smtp', connectSmtp);
