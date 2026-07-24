@@ -9,11 +9,15 @@ const {
   sendEmail,
   syncEmails,
   getConversations,
-  getMessages
+  getMessages,
+  handleGmailWebhook
 } = require('../controllers/emailController');
 const { protect } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
+
+// Webhook endpoint (Public, called by Google Pub/Sub)
+router.post('/webhook', handleGmailWebhook);
 
 // Google OAuth callback does not have Bearer token, it relies on state parameter
 router.get('/auth/google/callback', googleCallback);

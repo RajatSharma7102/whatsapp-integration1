@@ -4,6 +4,7 @@ import { useConversationStore } from './conversationStore';
 import { useLeadStore } from './leadStore';
 import { useCompanyStore } from './companyStore';
 import { Lead, Message } from '../types';
+import { useEmailStore } from './emailStore';
 
 interface SocketState {
   socket: Socket | null;
@@ -56,6 +57,32 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       const { activeConversation, updateMessageStatus } = useConversationStore.getState();
       if (activeConversation?._id === payload.conversationId) {
         updateMessageStatus(payload.messageId, payload.status);
+      }
+    });
+
+    socket.on('email:new-message', (payload: { conversationId: string, threadId: string, message: any }) => {
+      // Let EmailDrawer handle appending if open.
+      // We handle the unread count update for the Leads table here.
+      
+      const { leads, updateLead } = useLeadStore.getState();
+      const message = payload.message;
+      if (!message) return;
+
+      // Find if this message belongs to any lead in our list by matching email
+      const participants = [message.sender, ...(message.recipients || [])];
+      
+      const matchingLead = leads.find(l => 
+        l.email && participants.some(p => p && p.toLowerCase().includes(l.email!.toLowerCase()))
+      );
+
+      if (matchingLead) {
+        // If the email drawer is not actively looking at this thread, increment unread count
+        const { activeThreadId } = useEmailStore.getState();
+        // Since we can't easily check if drawer is open here without cyclic dependency or checking DOM,
+        // we can just increment the badge if activeThreadId !== payload.threadId
+        if (activeThreadId !== payload.threadId) {
+          updateLead(matchingLead._id, { unreadCount: (matchingLead.unreadCount ?? 0) + 1 });
+        }
       }
     });
 

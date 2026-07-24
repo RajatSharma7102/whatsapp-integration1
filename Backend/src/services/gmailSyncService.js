@@ -132,7 +132,7 @@ const syncGmailThreads = async (accountId) => {
           });
         }
 
-        await EmailMessage.create({
+        const savedMessage = await EmailMessage.create({
           conversationId: conversation._id,
           threadId: t.id,
           gmailMessageId: msg.id,
@@ -153,10 +153,15 @@ const syncGmailThreads = async (accountId) => {
         // Emit socket event for real-time UI update
         const io = getIO();
         if (io) {
-          io.emit('new_email', {
-            threadId: t.id,
+          console.log('\n=============================================');
+          console.log('📥 [SOCKET] INCOMING EMAIL MESSAGE EMITTED');
+          console.log('Thread ID:', t.id);
+          console.log('Message ID:', savedMessage._id);
+          console.log('=============================================\n');
+          io.emit('email:new-message', {
             conversationId: conversation._id,
-            messageId: msg.id
+            threadId: t.id,
+            message: savedMessage
           });
         }
       }
@@ -168,5 +173,7 @@ const syncGmailThreads = async (accountId) => {
 };
 
 module.exports = {
-  syncGmailThreads
+  syncGmailThreads,
+  getHeader,
+  extractBody
 };

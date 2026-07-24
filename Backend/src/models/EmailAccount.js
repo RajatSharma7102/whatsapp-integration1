@@ -28,6 +28,12 @@ const emailAccountSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
     },
+    historyId: {
+      type: String,
+    },
+    watchExpiration: {
+      type: Date,
+    },
     
     // SMTP specific fields
     smtpHost: {
@@ -49,7 +55,7 @@ const emailAccountSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['connected', 'disconnected', 'error'],
+      enum: ['connected', 'disconnected', 'error', 'Connected', 'Disconnected', 'Error'],
       default: 'connected',
     },
   },

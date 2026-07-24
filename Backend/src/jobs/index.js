@@ -41,22 +41,24 @@ const closeStaleConversationsJob = cron.schedule('0 */6 * * *', async () => {
 }, { scheduled: false });
 
 /**
- * Every 2 minutes: Sync emails for all connected accounts
+ * Daily: Renew Gmail Watch API for all connected accounts
+ * Watch expires every 7 days, so we renew it daily to be safe.
  */
-const syncEmailsJob = cron.schedule('*/2 * * * *', async () => {
+const { renewGmailWatch } = require('../services/webhookService');
+const renewGmailWatchJob = cron.schedule('0 2 * * *', async () => {
   try {
     const accounts = await EmailAccount.find({ provider: 'gmail', status: 'Connected' });
     for (const acc of accounts) {
-      await syncGmailThreads(acc._id).catch(err => logger.error(`Email sync failed for ${acc.email}`, err.message));
+      await renewGmailWatch(acc._id).catch(err => logger.error(`Watch renewal failed for ${acc.email}`, err.message));
     }
   } catch (err) {
-    logger.error('Email sync cron job failed', err.message);
+    logger.error('Watch renewal cron job failed', err.message);
   }
 }, { scheduled: false });
 
 const startAllJobs = () => {
-  syncEmailsJob.start();
   if (process.env.NODE_ENV === 'production') {
+    renewGmailWatchJob.start();
     dailyStatsJob.start();
     closeStaleConversationsJob.start();
     logger.job('Cron jobs started.');

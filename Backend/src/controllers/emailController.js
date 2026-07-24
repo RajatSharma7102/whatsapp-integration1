@@ -93,7 +93,7 @@ exports.googleCallback = async (req, res, next) => {
     }
 
     // Save or update account
-    await EmailAccount.findOneAndUpdate(
+    const account = await EmailAccount.findOneAndUpdate(
       { userId, provider: 'gmail', email },
       {
         accessToken: tokens.access_token,
@@ -103,6 +103,24 @@ exports.googleCallback = async (req, res, next) => {
       },
       { upsert: true, new: true }
     );
+
+    // Watch API Registration
+    try {
+      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+      const watchRes = await gmail.users.watch({
+        userId: 'me',
+        requestBody: {
+          labelIds: ['INBOX'],
+          topicName: 'projects/bugs-desk/topics/gmail-notifications'
+        }
+      });
+      console.log('Watch Registration Success:', watchRes.data);
+      account.historyId = watchRes.data.historyId;
+      account.watchExpiration = new Date(parseInt(watchRes.data.expiration));
+      await account.save();
+    } catch (watchErr) {
+      console.error('Watch Registration Failed:', watchErr.message || watchErr);
+    }
 
     const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
     res.redirect(`${frontendUrl}/settings?email_connected=true`);
@@ -263,7 +281,7 @@ exports.sendEmail = async (req, res, next) => {
       }
 
       if (convId) {
-        await EmailMessage.create({
+        const savedMessage = await EmailMessage.create({
           conversationId: convId,
           threadId: resGmail.data.threadId || threadId,
           gmailMessageId: resGmail.data.id,
@@ -276,6 +294,21 @@ exports.sendEmail = async (req, res, next) => {
           status: 'Sent',
           sentAt: new Date()
         });
+
+        const { getIO } = require('../sockets/socketManager');
+        const io = getIO();
+        if (io) {
+          console.log('\n=============================================');
+          console.log('📤 [SOCKET] OUTGOING EMAIL MESSAGE EMITTED');
+          console.log('Thread ID:', resGmail.data.threadId || threadId);
+          console.log('Message ID:', savedMessage._id);
+          console.log('=============================================\n');
+          io.emit('email:new-message', {
+            conversationId: convId,
+            threadId: resGmail.data.threadId || threadId,
+            message: savedMessage
+          });
+        }
       }
 
       return res.status(200).json({ success: true, message: 'Email sent successfully', messageId: resGmail.data.id, threadId: resGmail.data.threadId });
@@ -383,5 +416,38 @@ exports.getMessages = async (req, res, next) => {
     res.status(200).json({ success: true, data: messages, nextCursor });
   } catch (error) {
     next(error);
+  }
+};
+
+// @desc    Handle Gmail Pub/Sub Webhook Push Notifications
+// @route   POST /api/email/webhook
+// @access  Public
+exports.handleGmailWebhook = async (req, res) => {
+  // Always return 200 OK immediately to Google Pub/Sub
+  res.status(200).send('OK');
+
+  try {
+    const { message } = req.body;
+    if (!message || !message.data) {
+      console.warn('Invalid Pub/Sub payload received');
+      return;
+    }
+
+    // Decode Base64 payload
+    const decodedData = Buffer.from(message.data, 'base64').toString('utf8');
+    const payload = JSON.parse(decodedData);
+    
+    const { emailAddress, historyId } = payload;
+    if (!emailAddress || !historyId) return;
+
+    console.log('\n=============================================');
+    console.log('🔔 [WEBHOOK] GMAIL PUSH NOTIFICATION RECEIVED');
+    console.log('Email:', emailAddress, '| New History ID:', historyId);
+    console.log('=============================================\n');
+
+    const { handleGmailWebhookLogic } = require('../services/webhookService');
+    await handleGmailWebhookLogic(emailAddress, historyId);
+  } catch (err) {
+    console.error('Webhook endpoint error:', err);
   }
 };

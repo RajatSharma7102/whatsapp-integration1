@@ -6,7 +6,7 @@ import { useLeadStore } from "@/store/leadStore"
 import { useSocketStore } from "@/store/socketStore"
 import { useTeamStore } from "@/store/teamStore"
 import { CreateLeadModal } from "@/components/CreateLeadModal"
-import { SendEmailModal } from "@/components/SendEmailModal"
+import { EmailDrawer } from "@/components/Email/EmailDrawer"
 import {
   Users, TrendingUp, Target, Clock, AlertCircle,
   UserX, Zap, BarChart3, Plus, Filter, ChevronDown
@@ -21,8 +21,9 @@ const STAGES = [
 
 export default function Leads() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [emailModalLead, setEmailModalLead] = useState<Lead | null>(null)
+  const [emailLead, setEmailLead] = useState<Lead | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isEmailDrawerOpen, setIsEmailDrawerOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"own" | "team" | "all">("all")
 
@@ -46,6 +47,16 @@ export default function Leads() {
   const handleCloseChat = () => {
     setIsDrawerOpen(false)
     setTimeout(() => setSelectedLead(null), 300)
+  }
+
+  const handleOpenEmail = (lead: Lead) => {
+    setEmailLead(lead)
+    setIsEmailDrawerOpen(true)
+  }
+
+  const handleCloseEmail = () => {
+    setIsEmailDrawerOpen(false)
+    setTimeout(() => setEmailLead(null), 300)
   }
 
   // Stage counts
@@ -173,7 +184,7 @@ export default function Leads() {
         </div>
 
         {/* Lead Table */}
-        <LeadTable leads={leads} onOpenChat={handleOpenChat} onOpenEmail={setEmailModalLead} onLeadUpdate={updateLead} />
+        <LeadTable leads={leads} onOpenChat={handleOpenChat} onOpenEmail={handleOpenEmail} onLeadUpdate={updateLead} />
       </div>
 
       {/* Chat Drawer */}
@@ -182,14 +193,8 @@ export default function Leads() {
       {/* Create Lead Modal */}
       <CreateLeadModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
-      {/* Send Email Modal */}
-      {emailModalLead && emailModalLead.email && (
-        <SendEmailModal
-          isOpen={!!emailModalLead}
-          onClose={() => setEmailModalLead(null)}
-          recipientEmail={emailModalLead.email}
-        />
-      )}
+      {/* Email Drawer */}
+      <EmailDrawer isOpen={isEmailDrawerOpen} onClose={handleCloseEmail} lead={emailLead} />
     </>
   )
 }

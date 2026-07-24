@@ -40,6 +40,7 @@ interface EmailStore {
   
   fetchConversations: (email?: string, cursor?: string) => Promise<void>;
   fetchMessages: (threadId: string, cursor?: string) => Promise<void>;
+  addMessage: (threadId: string, message: any) => void;
   setActiveThread: (threadId: string | null) => void;
   syncEmails: () => Promise<void>;
 }
@@ -83,26 +84,31 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
       const res = await emailService.getMessages(threadId, 20, cursor);
       // Backend returns newest first. We need oldest first for UI display.
       const reversed = [...res.data.data].reverse();
-      
-      if (cursor) {
-        set((state) => ({ 
-          // prepend older messages
-          messages: [...reversed, ...state.messages],
-          nextMessageCursor: res.data.nextCursor
-        }));
-      } else {
-        set({ 
-          messages: reversed,
-          nextMessageCursor: res.data.nextCursor
-        });
-      }
+      set((state) => ({ 
+        messages: cursor ? [...res.data.data.reverse(), ...state.messages] : res.data.data.reverse(),
+        nextMessageCursor: res.data.nextCursor,
+        loadingMessages: false 
+      }));
     } catch (e) {
       console.error('Failed to fetch messages', e);
-    } finally {
       set({ loadingMessages: false });
     }
   },
   
+  addMessage: (threadId: string, message: any) => {
+    set((state) => {
+      // If we're looking at this thread, append the message
+      if (state.activeThreadId === threadId) {
+        // Prevent duplicate append using both _id and gmailMessageId
+        const exists = state.messages.find(m => m._id === message._id || ((m as any).gmailMessageId && message.gmailMessageId && (m as any).gmailMessageId === message.gmailMessageId));
+        if (!exists) {
+          return { messages: [...state.messages, message] };
+        }
+      }
+      return state;
+    });
+  },
+
   setActiveThread: (threadId: string | null) => {
     set({ activeThreadId: threadId, messages: [], nextMessageCursor: null });
     if (threadId) {
